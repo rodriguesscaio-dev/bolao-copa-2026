@@ -168,6 +168,9 @@ a { color: var(--accent); text-underline-offset: 3px; }
   display: inline-flex; align-items: center; gap: .3rem;
   color: var(--accent-3); font-weight: 700; font-size: .8rem;
 }
+/* ---- Prazo para palpitar / encerrado ---- */
+.deadline-tag { color: var(--accent); font-weight: 700; font-size: .8rem; }
+.lock-tag { color: var(--accent-2); font-weight: 700; font-size: .8rem; }
 
 /* ---- Toast (aviso flutuante) ---- */
 .toast-bolao {

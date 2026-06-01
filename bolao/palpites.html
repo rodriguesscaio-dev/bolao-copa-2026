@@ -152,16 +152,22 @@
         `<span class="pts-pill ${pts===scoring.exact?"pts-10":pts>0?"pts-mid":"pts-0"}">+${pts}</span>`;
       const resultPill = m.finished
         ? `<span class="result-pill ms-2">Final ${m.homeScore} x ${m.awayScore}</span>` : "";
-      const confirmTag = m.finished
-        ? `<div class="confirm-tag mt-1">✅ Resultado confirmado</div>` : "";
+      // Linha de status: prazo para palpitar / encerrado / resultado confirmado
+      const statusTag = m.finished
+        ? `<div class="confirm-tag mt-1">✅ Resultado confirmado</div>`
+        : locked
+          ? `<div class="lock-tag mt-1">🔒 Palpites encerrados — a partida já começou</div>`
+          : (when
+              ? `<div class="deadline-tag mt-1">⏳ Você pode palpitar até ${when} (início do jogo)</div>`
+              : `<div class="deadline-tag mt-1">⏳ Palpites abertos</div>`);
 
       return `
       <div class="match-card ${m.finished?"finished":""} ${locked?"locked":""}">
         <div class="d-flex justify-content-between align-items-center mb-1">
-          <small class="muted">${when}</small>
+          <small class="muted">🗓️ ${when || "data a definir"}</small>
           <div>${ptsPill}${resultPill}</div>
         </div>
-        ${confirmTag}
+        ${statusTag}
         <div class="d-flex align-items-center justify-content-center gap-2 gap-md-3 flex-wrap">
           <div class="team justify-content-end" style="flex:1">
             <span class="text-truncate">${m.home}</span><span class="flag">${flagOf(m.home)}</span>
@@ -253,6 +259,14 @@
           clearTimeout(timers[id]);
           timers[id] = setTimeout(async () => {
             const bar = document.getElementById("savebar");
+            // trava de prazo: não salva se o jogo já começou (ou acabou)
+            const m = matches[id];
+            const start = m && m.datetime ? new Date(m.datetime).getTime() : null;
+            if (m && (m.finished || (start && Date.now() >= start))) {
+              bar.textContent = "🔒 Palpites encerrados para este jogo.";
+              render();
+              return;
+            }
             try {
               await saveBet(playerId, id, home, away);
               bar.textContent = "✅ Palpite salvo!";
@@ -262,6 +276,12 @@
         });
       });
     }
+
+    // Atualiza os rótulos de prazo/encerrado a cada 30s (sem atrapalhar quem digita)
+    setInterval(() => {
+      if (document.activeElement && document.activeElement.classList.contains("score-input")) return;
+      render();
+    }, 30000);
   </script>
 </body>
 </html>
