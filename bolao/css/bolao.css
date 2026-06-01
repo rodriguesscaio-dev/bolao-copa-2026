@@ -1,0 +1,219 @@
+/* ============================================================
+   Bolão da Copa — Identidade visual Água Camelo
+   Base: brandbook 2024 (colors_and_type.css). Superfície preta,
+   tipografia Bricolage Grotesque, cores em blocos sólidos,
+   cantos retos, pílulas nas ações, sem gradiente nem blur.
+   ============================================================ */
+
+/* ---- Tipografia da marca (auto-hospedada) ---- */
+@font-face {
+  font-family: "Bricolage Grotesque";
+  src: url("../fonts/BricolageGrotesque.ttf") format("truetype");
+  font-weight: 200 800;
+  font-stretch: 75% 100%;
+  font-display: swap;
+}
+
+:root {
+  --ac-blue-deep: #023da5;
+  --ac-blue-logo: #184098;
+  --ac-blue:      #0372ff;
+  --ac-pink:      #ff6fff;
+  --ac-cyan:      #0efbe3;
+  --ac-lime:      #abff5a;
+  --ac-green:     #00906c;
+  --ac-white:     #fefefe;
+  --ac-black:     #000000;
+
+  --bg:        var(--ac-black);
+  --surface:   #0c0d10;          /* painel sobre o preto */
+  --fg:        var(--ac-white);
+  --fg-muted:  color-mix(in oklab, var(--ac-white), transparent 42%);
+  --accent:    var(--ac-cyan);   /* destaque principal */
+  --accent-2:  var(--ac-pink);   /* ação primária */
+  --accent-3:  var(--ac-lime);   /* "ao vivo" / acerto */
+  --line:      color-mix(in oklab, var(--ac-white), transparent 84%);
+
+  --font: "Bricolage Grotesque", system-ui, -apple-system, sans-serif;
+
+  --r-pill: 999px;
+  --r-block: 0px;       /* layout: cantos retos */
+  --bw: 2px;
+  --shadow-sticker: 4px 4px 0 0 var(--ac-black);
+}
+
+* { box-sizing: border-box; }
+
+body {
+  font-family: var(--font);
+  background: var(--bg);
+  color: var(--fg);
+  min-height: 100vh;
+  margin: 0;
+  letter-spacing: -0.01em;
+}
+
+a { color: var(--accent); text-underline-offset: 3px; }
+
+/* ---- Navegação ---- */
+.bolao-nav {
+  background: var(--ac-black);
+  border-bottom: var(--bw) solid var(--accent);
+}
+.bolao-nav .brand {
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: var(--fg);
+  text-decoration: none;
+  font-size: 1.3rem;
+}
+.bolao-nav .brand span { color: var(--accent); }
+.bolao-nav a.nav-link { color: var(--fg); font-weight: 600; padding: .25rem .25rem; }
+.bolao-nav a.nav-link.active,
+.bolao-nav a.nav-link:hover { color: var(--accent); }
+
+/* ---- Painéis (cantos retos, borda sólida, sem blur) ---- */
+.card-glass {
+  background: var(--surface);
+  border: var(--bw) solid var(--line);
+  border-radius: var(--r-block);
+}
+
+/* ---- Botões = pílulas ---- */
+.btn-copa,
+.btn-outline-copa {
+  border-radius: var(--r-pill);
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  border: var(--bw) solid var(--ac-black);
+  transition: background 120ms ease, color 120ms ease, transform 120ms ease;
+}
+.btn-copa { background: var(--accent-2); color: var(--ac-black); }
+.btn-copa:hover { background: var(--accent); color: var(--ac-black); }
+.btn-copa:active { transform: translateY(1px); }
+
+.btn-outline-copa { background: transparent; color: var(--fg); border-color: var(--fg); }
+.btn-outline-copa:hover { background: var(--accent); color: var(--ac-black); border-color: var(--ac-black); }
+
+/* ---- Hero ---- */
+.hero-title {
+  font-weight: 800;
+  font-size: clamp(2.2rem, 6.5vw, 4rem);
+  line-height: 1.02;
+  letter-spacing: -0.03em;
+}
+.hero-title span { color: var(--accent); }
+
+/* ---- Cartão de jogo / palpite ---- */
+.match-card {
+  background: var(--surface);
+  border: var(--bw) solid var(--line);
+  border-radius: var(--r-block);
+  padding: .85rem 1rem;
+  margin-bottom: .6rem;
+  transition: border-color .12s;
+}
+.match-card:hover { border-color: var(--accent); }
+.match-card.finished { border-left: 6px solid var(--accent-3); }
+.match-card.locked   { opacity: .9; }
+
+.team { display: flex; align-items: center; gap: .5rem; font-weight: 700; min-width: 0; }
+.team .flag { font-size: 1.4rem; display: inline-flex; align-items: center; }
+.flag-img {
+  width: 28px; height: 21px; object-fit: cover;
+  border: 1px solid var(--line); border-radius: 2px; vertical-align: middle;
+}
+.flag-fallback { font-size: 1.2rem; }
+
+.score-input {
+  width: 58px; text-align: center; font-weight: 800; font-size: 1.1rem;
+  background: var(--ac-black); color: var(--fg);
+  border: var(--bw) solid var(--line); border-radius: var(--r-block); padding: .3rem;
+}
+.score-input:focus { outline: none; border-color: var(--accent); }
+.score-input:disabled { opacity: .55; }
+.vs { color: var(--accent); font-weight: 800; }
+
+/* ---- Blocos de grupo (Fase de Grupos) ---- */
+.group-block {
+  border: var(--bw) solid var(--line);
+  border-radius: var(--r-block);
+  padding: .5rem 1rem 1rem;
+  background: transparent;
+}
+.group-title { color: var(--accent); letter-spacing: -0.02em; }
+/* Grupo do Brasil em destaque (verde-lima + adesivo) */
+.group-brasil {
+  border-color: var(--ac-lime);
+  box-shadow: var(--shadow-sticker);
+}
+.group-brasil .group-title { color: var(--ac-lime); }
+
+/* ---- Pílulas de estado ---- */
+.badge-stage {
+  background: transparent; color: var(--accent);
+  border: var(--bw) solid var(--accent); font-weight: 700; border-radius: var(--r-pill);
+}
+.result-pill {
+  background: var(--accent-3); color: var(--ac-black); font-weight: 800;
+  border-radius: var(--r-pill); padding: .15rem .8rem;
+}
+.pts-pill { border-radius: var(--r-pill); padding: .12rem .6rem; font-weight: 800; font-size: .8rem; }
+.pts-10  { background: var(--accent); color: var(--ac-black); }
+.pts-mid { background: var(--accent-3); color: var(--ac-black); }
+.pts-0   { background: color-mix(in oklab, var(--ac-white), transparent 88%); color: var(--fg-muted); }
+
+/* ---- Ranking ---- */
+.rank-table { width: 100%; border-collapse: separate; border-spacing: 0 .4rem; }
+.rank-table th {
+  color: var(--accent); font-size: .72rem; text-transform: uppercase; letter-spacing: .1em; font-weight: 700;
+}
+.rank-table td, .rank-table th { padding: .7rem .8rem; }
+.rank-row { background: var(--surface); }
+.rank-row td { border-top: var(--bw) solid var(--line); border-bottom: var(--bw) solid var(--line); }
+.rank-row td:first-child { border-left: var(--bw) solid var(--line); }
+.rank-row td:last-child  { border-right: var(--bw) solid var(--line); }
+.rank-pos { font-weight: 800; font-size: 1.1rem; width: 48px; text-align: center; }
+/* líder = bloco de cor sólido (azul vibrante), sem gradiente */
+.rank-1 td { background: var(--ac-blue); border-color: var(--ac-black); color: var(--ac-white); }
+.rank-1 .rank-pos { color: var(--ac-white); }
+.rank-1 .text-amarelo { color: var(--ac-white) !important; }
+.medal { font-size: 1.3rem; }
+
+/* ---- Campeão = bloco sólido estilo adesivo ---- */
+.winner-banner {
+  background: var(--accent);
+  color: var(--ac-black);
+  border: var(--bw) solid var(--ac-black);
+  border-radius: var(--r-block);
+  box-shadow: var(--shadow-sticker);
+  padding: 1.5rem; text-align: center; font-weight: 800;
+}
+.winner-banner .who { font-size: 2rem; letter-spacing: -0.02em; }
+
+/* ---- Aviso de configuração ---- */
+.setup-banner {
+  background: var(--ac-black);
+  border: var(--bw) solid var(--accent-2);
+  border-radius: var(--r-block); padding: 1rem 1.25rem; color: var(--fg);
+}
+
+/* ---- Utilitários (nomes herdados) ---- */
+.muted { color: var(--fg-muted); }
+.text-amarelo { color: var(--accent); }   /* nome legado → ciano da marca */
+.divider { height: var(--bw); background: var(--line); margin: 1.25rem 0; }
+
+/* ---- Ajustes do Bootstrap para o tema escuro ---- */
+.form-control, .form-select {
+  background: var(--ac-black); color: var(--fg);
+  border: var(--bw) solid var(--line); border-radius: var(--r-block);
+}
+.form-control:focus, .form-select:focus {
+  background: var(--ac-black); color: var(--fg);
+  border-color: var(--accent); box-shadow: none;
+}
+.form-control::placeholder { color: var(--fg-muted); }
+.input-group .btn-copa { border-radius: var(--r-pill); }
+.badge.bg-warning { background: var(--accent) !important; color: var(--ac-black) !important; }
+.btn-outline-light { border-radius: var(--r-pill); }
+::selection { background: var(--accent); color: var(--ac-black); }

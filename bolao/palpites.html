@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Meus Palpites • Bolão Copa 2026</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="css/bolao.css" rel="stylesheet">
+</head>
+<body>
+
+  <nav class="bolao-nav py-3">
+    <div class="container d-flex align-items-center justify-content-between">
+      <a class="brand" href="index.html">Água Camelo <span>Bolão da Copa</span></a>
+      <div class="d-flex gap-3">
+        <a class="nav-link" href="index.html">Início</a>
+        <a class="nav-link active" href="palpites.html">Meus Palpites</a>
+        <a class="nav-link" href="ranking.html">Ranking</a>
+        <a class="nav-link" href="admin.html">Admin</a>
+      </div>
+    </div>
+  </nav>
+
+  <main class="container py-4">
+    <div id="setup" class="setup-banner mb-4" style="display:none">
+      ⚠️ <strong>Firebase ainda não configurado.</strong> Edite
+      <code>bolao/js/firebase-config.js</code>. Veja o README.
+    </div>
+
+    <div class="d-flex flex-wrap align-items-center justify-content-between mb-3 gap-2">
+      <div>
+        <h3 class="fw-bold mb-0">Meus Palpites</h3>
+        <span class="muted">Jogador: <strong id="who" class="text-amarelo">—</strong>
+          <a href="#" id="change" class="ms-2 small">(sair)</a></span>
+      </div>
+      <div class="text-end">
+        <div class="muted small">Seus pontos até agora</div>
+        <div class="fw-bold fs-3 text-amarelo" id="mypts">0</div>
+      </div>
+    </div>
+
+    <div id="savebar" class="muted small mb-3">💾 Os palpites salvam sozinhos ao digitar.</div>
+
+    <div id="list"><p class="muted">Carregando jogos…</p></div>
+  </main>
+
+  <footer class="container text-center muted py-4">
+    <small>Dica: você só pode palpitar até o início de cada jogo.</small>
+  </footer>
+
+  <script type="module">
+    import {
+      isConfigured, onAuth, logOut, onMatches, onBets, onConfig, saveBet, scoreBet
+    } from "./js/db.js";
+    import { flagOf } from "./js/teams.js";
+
+    if (!isConfigured) document.getElementById("setup").style.display = "block";
+
+    // ---- identifica o jogador pelo login (Firebase Auth) ----
+    let playerId = null, playerName = "";
+    let matches = {}, myBets = {}, scoring = null;
+
+    document.getElementById("change").onclick = async (e) => {
+      e.preventDefault();
+      try { await logOut(); } catch (err) {}
+      localStorage.removeItem("bolao_id");
+      localStorage.removeItem("bolao_name");
+      window.location.href = "index.html";
+    };
+
+    onAuth((user) => {
+      if (!user) { window.location.href = "index.html"; return; }
+      playerId = user.uid;
+      playerName = user.displayName || localStorage.getItem("bolao_name") || user.email;
+      document.getElementById("who").textContent = playerName;
+      // agora que sabemos quem é, assina os palpites desse jogador
+      onBets((all) => { myBets = (all || {})[playerId] || {}; render(); });
+      render();
+    });
+
+    onConfig((s) => { scoring = s; render(); });
+    onMatches((m) => { matches = m || {}; render(); });
+
+    const STAGE_ORDER = ["Fase de Grupos","Oitavas de Final","Quartas de Final","Semifinal","Disputa de 3º","Final"];
+    function stageRank(s){ const i = STAGE_ORDER.indexOf(s); return i < 0 ? 99 : i; }
+
+    const isDefined = (m) => m.home && m.away && m.home !== "A definir" && m.away !== "A definir";
+    let total = 0;
+
+    // Monta o cartão de um jogo (e soma os pontos no total).
+    function matchCard(m) {
+      const bet = myBets[m.id];
+      const now = Date.now();
+      const start = m.datetime ? new Date(m.datetime).getTime() : null;
+      const locked = m.finished || (start && now >= start);
+      const pts = (m.finished && bet) ? scoreBet(bet, m, scoring) : null;
+      if (pts != null) total += pts;
+
+      const when = m.datetime
+        ? new Date(m.datetime).toLocaleString("pt-BR",{day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"})
+        : "";
+      const ptsPill = pts == null ? "" :
+        `<span class="pts-pill ${pts===scoring.exact?"pts-10":pts>0?"pts-mid":"pts-0"}">+${pts}</span>`;
+      const resultPill = m.finished
+        ? `<span class="result-pill ms-2">Final ${m.homeScore} x ${m.awayScore}</span>` : "";
+
+      return `
+      <div class="match-card ${m.finished?"finished":""} ${locked?"locked":""}">
+        <div class="d-flex justify-content-between align-items-center mb-1">
+          <small class="muted">${when}</small>
+          <div>${ptsPill}${resultPill}</div>
+        </div>
+        <div class="d-flex align-items-center justify-content-center gap-2 gap-md-3 flex-wrap">
+          <div class="team justify-content-end" style="flex:1">
+            <span class="text-truncate">${m.home}</span><span class="flag">${flagOf(m.home)}</span>
+          </div>
+          <input type="number" min="0" class="score-input" data-m="${m.id}" data-s="home"
+                 value="${bet?.home ?? ""}" ${locked?"disabled":""}>
+          <span class="vs">x</span>
+          <input type="number" min="0" class="score-input" data-m="${m.id}" data-s="away"
+                 value="${bet?.away ?? ""}" ${locked?"disabled":""}>
+          <div class="team" style="flex:1">
+            <span class="flag">${flagOf(m.away)}</span><span class="text-truncate">${m.away}</span>
+          </div>
+        </div>
+        ${locked && !bet ? `<div class="text-center small text-warning mt-1">Você não palpitou neste jogo.</div>`:""}
+      </div>`;
+    }
+
+    function render() {
+      if (!scoring) return;
+      const list = document.getElementById("list");
+      const arr = Object.values(matches);
+      total = 0;
+
+      if (!arr.length) {
+        list.innerHTML = `<div class="card-glass p-4 text-center muted">
+          Nenhum jogo cadastrado ainda. Peça para o administrador cadastrar os
+          jogos na aba <a href="admin.html">Admin</a>.</div>`;
+        document.getElementById("mypts").textContent = "0";
+        return;
+      }
+
+      const byTime = (a,b) => String(a.datetime||"").localeCompare(String(b.datetime||""));
+      // descobre em qual grupo o Brasil está
+      const brBrasil = arr.find(m => m.stage === "Fase de Grupos" && (m.home === "Brasil" || m.away === "Brasil"));
+      const brazilGroup = brBrasil ? brBrasil.group : null;
+
+      let html = "";
+      let hiddenKO = 0;
+
+      // ---- FASE DE GRUPOS, separada por grupo (A, B, C…) ----
+      const groupMatches = arr.filter(m => m.stage === "Fase de Grupos" && isDefined(m));
+      const letters = [...new Set(groupMatches.map(m => m.group).filter(Boolean))].sort();
+      for (const letter of letters) {
+        const games = groupMatches.filter(m => m.group === letter).sort(byTime);
+        const isBr = letter === brazilGroup;
+        html += `
+        <section class="group-block ${isBr ? "group-brasil" : ""} mt-4">
+          <h5 class="group-title fw-bold mb-2">
+            ${isBr ? "⭐ " : ""}Grupo ${letter}
+            ${isBr ? `<span class="badge text-dark ms-2" style="background:#ffd200">Grupo do Brasil 🇧🇷</span>` : ""}
+          </h5>
+          ${games.map(matchCard).join("")}
+        </section>`;
+      }
+
+      // ---- MATA-MATA: só os jogos com adversários já definidos ----
+      const koStages = STAGE_ORDER.filter(s => s !== "Fase de Grupos");
+      for (const stage of koStages) {
+        const all = arr.filter(m => m.stage === stage);
+        const games = all.filter(isDefined).sort(byTime);
+        hiddenKO += all.length - games.length;
+        if (!games.length) continue;
+        html += `
+        <section class="mt-4">
+          <h5 class="text-amarelo fw-bold mb-2">${stage}</h5>
+          ${games.map(matchCard).join("")}
+        </section>`;
+      }
+
+      if (hiddenKO > 0) {
+        html += `<p class="muted small mt-4 mb-0">
+          🔒 ${hiddenKO} jogo(s) do mata-mata ainda sem adversários definidos.
+          Eles aparecem aqui automaticamente conforme a Copa avança.</p>`;
+      }
+
+      list.innerHTML = html;
+      document.getElementById("mypts").textContent = total;
+      wireInputs();
+    }
+
+    let timers = {};
+    function wireInputs() {
+      document.querySelectorAll(".score-input").forEach(inp => {
+        inp.addEventListener("input", () => {
+          const id = inp.dataset.m;
+          const home = document.querySelector(`.score-input[data-m="${id}"][data-s="home"]`).value;
+          const away = document.querySelector(`.score-input[data-m="${id}"][data-s="away"]`).value;
+          if (home === "" || away === "") return;
+          clearTimeout(timers[id]);
+          timers[id] = setTimeout(async () => {
+            const bar = document.getElementById("savebar");
+            try {
+              await saveBet(playerId, id, home, away);
+              bar.textContent = "✅ Palpite salvo!";
+              setTimeout(() => bar.textContent = "💾 Os palpites salvam sozinhos ao digitar.", 1500);
+            } catch (e) { bar.textContent = "❌ Erro ao salvar. Cheque a conexão."; }
+          }, 500);
+        });
+      });
+    }
+  </script>
+</body>
+</html>

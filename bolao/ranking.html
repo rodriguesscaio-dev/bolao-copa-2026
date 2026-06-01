@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Ranking • Bolão Copa 2026</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="css/bolao.css" rel="stylesheet">
+</head>
+<body>
+
+  <nav class="bolao-nav py-3">
+    <div class="container d-flex align-items-center justify-content-between">
+      <a class="brand" href="index.html">Água Camelo <span>Bolão da Copa</span></a>
+      <div class="d-flex gap-3">
+        <a class="nav-link" href="index.html">Início</a>
+        <a class="nav-link" href="palpites.html">Meus Palpites</a>
+        <a class="nav-link active" href="ranking.html">Ranking</a>
+        <a class="nav-link" href="admin.html">Admin</a>
+      </div>
+    </div>
+  </nav>
+
+  <main class="container py-4">
+    <div id="setup" class="setup-banner mb-4" style="display:none">
+      ⚠️ <strong>Firebase ainda não configurado.</strong> Edite
+      <code>bolao/js/firebase-config.js</code>. Veja o README.
+    </div>
+
+    <h3 class="fw-bold mb-1">🏆 Ranking do Bolão</h3>
+    <p class="muted" id="progress">—</p>
+
+    <div id="winner"></div>
+
+    <div class="card-glass p-3 p-md-4 mt-3">
+      <div id="ranktable"><p class="muted">Carregando…</p></div>
+    </div>
+
+    <h4 class="fw-bold mt-5 mb-3">📋 Resultados dos jogos</h4>
+    <div id="results"><p class="muted">Carregando…</p></div>
+  </main>
+
+  <footer class="container text-center muted py-4">
+    <small>Atualiza em tempo real conforme os resultados são lançados.</small>
+  </footer>
+
+  <script type="module">
+    import { isConfigured, onMatches, onBets, onPlayers, onConfig, computeRanking } from "./js/db.js";
+    import { flagOf } from "./js/teams.js";
+
+    if (!isConfigured) document.getElementById("setup").style.display = "block";
+
+    let matches = {}, bets = {}, players = {}, scoring = null;
+    onConfig((s)=>{scoring=s;render();});
+    onMatches((m)=>{matches=m||{};render();});
+    onBets((b)=>{bets=b||{};render();});
+    onPlayers((p)=>{players=p||{};render();});
+
+    const myId = localStorage.getItem("bolao_id");
+
+    function render() {
+      if (!scoring) return;
+      const matchArr = Object.values(matches);
+      const finished = matchArr.filter(m=>m.finished);
+      const allDone = matchArr.length > 0 && finished.length === matchArr.length;
+
+      document.getElementById("progress").textContent =
+        `${finished.length} de ${matchArr.length} jogos finalizados • ${Object.keys(players).length} participantes`;
+
+      const ranking = computeRanking(players, bets, matches, scoring);
+
+      // ----- Vencedor -----
+      const winnerEl = document.getElementById("winner");
+      if (allDone && ranking.length) {
+        const champs = ranking.filter(r => r.pos === 1);
+        winnerEl.innerHTML = `
+          <div class="winner-banner mt-3">
+            <div>🏆 CAMPEÃO DO BOLÃO 🏆</div>
+            <div class="who">${champs.map(c=>c.name).join(" & ")}</div>
+            <div>${champs[0].points} pontos • ${champs[0].exact} placares cravados</div>
+          </div>`;
+      } else { winnerEl.innerHTML = ""; }
+
+      // ----- Tabela -----
+      const tEl = document.getElementById("ranktable");
+      if (!ranking.length) {
+        tEl.innerHTML = `<p class="muted mb-0">Ninguém entrou no bolão ainda.
+          Seja o primeiro na aba <a href="index.html">Início</a>!</p>`;
+      } else {
+        const medal = (p)=> p===1?"🥇":p===2?"🥈":p===3?"🥉":"";
+        tEl.innerHTML = `
+          <table class="rank-table">
+            <thead><tr>
+              <th>#</th><th>Participante</th>
+              <th class="text-center">Pts</th>
+              <th class="text-center d-none d-sm-table-cell">Cravadas</th>
+              <th class="text-center d-none d-sm-table-cell">Acertos</th>
+            </tr></thead>
+            <tbody>
+            ${ranking.map(r=>`
+              <tr class="rank-row ${r.pos===1?"rank-1":""} ${r.id===myId?"":""}">
+                <td class="rank-pos">${medal(r.pos)||r.pos}</td>
+                <td class="fw-bold">${r.name} ${r.id===myId?'<span class="badge bg-warning text-dark ms-1">você</span>':""}</td>
+                <td class="text-center fw-bold text-amarelo fs-5">${r.points}</td>
+                <td class="text-center d-none d-sm-table-cell">${r.exact}</td>
+                <td class="text-center d-none d-sm-table-cell">${r.hits}</td>
+              </tr>`).join("")}
+            </tbody>
+          </table>`;
+      }
+
+      // ----- Resultados -----
+      const rEl = document.getElementById("results");
+      if (!finished.length) {
+        rEl.innerHTML = `<p class="muted">Nenhum jogo finalizado ainda.</p>`;
+      } else {
+        finished.sort((a,b)=>String(b.datetime||"").localeCompare(String(a.datetime||"")));
+        rEl.innerHTML = finished.map(m=>`
+          <div class="match-card finished">
+            <div class="d-flex align-items-center justify-content-center gap-2 gap-md-3 flex-wrap">
+              <div class="team justify-content-end" style="flex:1">
+                <span class="text-truncate">${m.home}</span><span class="flag">${flagOf(m.home)}</span>
+              </div>
+              <span class="result-pill">${m.homeScore} x ${m.awayScore}</span>
+              <div class="team" style="flex:1">
+                <span class="flag">${flagOf(m.away)}</span><span class="text-truncate">${m.away}</span>
+              </div>
+            </div>
+            <div class="text-center small muted mt-1">${m.stage||""}${m.group?` • Grupo ${m.group}`:""}</div>
+          </div>`).join("");
+      }
+    }
+  </script>
+</body>
+</html>

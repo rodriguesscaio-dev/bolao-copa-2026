@@ -1,0 +1,29 @@
+name: Atualizar resultados do bolão
+
+# Roda a cada 15 minutos para buscar jogos/resultados reais da Copa
+# e gravar no Firebase. Também pode ser disparado manualmente na aba Actions.
+on:
+  schedule:
+    - cron: "*/15 * * * *"
+  workflow_dispatch:
+
+# Evita execuções sobrepostas
+concurrency:
+  group: atualizar-resultados
+  cancel-in-progress: false
+
+jobs:
+  atualizar:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Buscar e gravar resultados
+        env:
+          FOOTBALL_DATA_TOKEN: ${{ secrets.FOOTBALL_DATA_TOKEN }}
+          FIREBASE_DB_URL: ${{ secrets.FIREBASE_DB_URL }}
+        run: node scripts/atualizar-resultados.mjs

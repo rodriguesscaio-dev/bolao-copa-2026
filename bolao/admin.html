@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Admin • Bolão Copa 2026</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="css/bolao.css" rel="stylesheet">
+</head>
+<body>
+
+  <nav class="bolao-nav py-3">
+    <div class="container d-flex align-items-center justify-content-between">
+      <a class="brand" href="index.html">Água Camelo <span>Bolão da Copa</span></a>
+      <div class="d-flex gap-3">
+        <a class="nav-link" href="index.html">Início</a>
+        <a class="nav-link" href="palpites.html">Meus Palpites</a>
+        <a class="nav-link" href="ranking.html">Ranking</a>
+        <a class="nav-link active" href="admin.html">Admin</a>
+      </div>
+    </div>
+  </nav>
+
+  <main class="container py-4">
+    <div id="setup" class="setup-banner mb-4" style="display:none">
+      ⚠️ <strong>Firebase ainda não configurado.</strong> Edite
+      <code>bolao/js/firebase-config.js</code>. Veja o README.
+    </div>
+
+    <!-- Portão de PIN -->
+    <div id="gate" class="card-glass p-4 mx-auto" style="max-width:420px">
+      <h4 class="fw-bold">🔒 Área do Administrador</h4>
+      <p class="muted">Digite o PIN para cadastrar jogos e lançar resultados.</p>
+      <div class="input-group input-group-lg">
+        <input id="pin" type="password" class="form-control" placeholder="PIN">
+        <button id="unlock" class="btn btn-copa">Entrar</button>
+      </div>
+      <div id="pinerr" class="text-danger small mt-2"></div>
+    </div>
+
+    <!-- Painel -->
+    <div id="panel" style="display:none">
+
+      <div class="card-glass p-3 mb-4">
+        <span class="muted small">Os jogos e placares da Copa entram
+        <span class="text-amarelo fw-bold">automaticamente</span> (robô a cada ~15 min).
+        Use esta área só para ajustes manuais ou para corrigir um resultado.</span>
+      </div>
+
+      <!-- Pontuação -->
+      <section class="card-glass p-4 mb-4">
+        <h5 class="text-amarelo fw-bold">⚙️ Pontuação</h5>
+        <div class="row g-2 align-items-end">
+          <div class="col"><label class="form-label small">Placar exato</label>
+            <input id="s-exact" type="number" class="form-control"></div>
+          <div class="col"><label class="form-label small">Vencedor + saldo</label>
+            <input id="s-diff" type="number" class="form-control"></div>
+          <div class="col"><label class="form-label small">Só o vencedor</label>
+            <input id="s-winner" type="number" class="form-control"></div>
+          <div class="col-auto"><button id="savescore" class="btn btn-copa">Salvar</button></div>
+        </div>
+      </section>
+
+      <!-- Cadastrar jogo -->
+      <section class="card-glass p-4 mb-4">
+        <h5 class="text-amarelo fw-bold">➕ Cadastrar jogo</h5>
+        <div class="row g-2">
+          <div class="col-md-3"><input id="m-home" class="form-control" placeholder="Time mandante"></div>
+          <div class="col-md-3"><input id="m-away" class="form-control" placeholder="Time visitante"></div>
+          <div class="col-md-3"><input id="m-dt" type="datetime-local" class="form-control"></div>
+          <div class="col-md-2">
+            <select id="m-stage" class="form-select">
+              <option>Fase de Grupos</option><option>Oitavas de Final</option>
+              <option>Quartas de Final</option><option>Semifinal</option>
+              <option>Disputa de 3º</option><option>Final</option>
+            </select>
+          </div>
+          <div class="col-md-1"><input id="m-group" class="form-control" placeholder="Grupo" maxlength="2"></div>
+        </div>
+        <button id="addmatch" class="btn btn-copa mt-3">Adicionar jogo</button>
+      </section>
+
+      <!-- Importar em lote -->
+      <section class="card-glass p-4 mb-4">
+        <h5 class="text-amarelo fw-bold">📥 Importar vários jogos de uma vez</h5>
+        <p class="muted small mb-2">Uma linha por jogo, no formato:<br>
+          <code>Mandante x Visitante | 2026-06-15 16:00 | Fase de Grupos | A</code><br>
+          (data e fase/grupo são opcionais)</p>
+        <textarea id="bulk" class="form-control" rows="5"
+          placeholder="Brasil x Sérvia | 2026-06-13 16:00 | Fase de Grupos | A
+México x Polônia | 2026-06-13 19:00 | Fase de Grupos | A"></textarea>
+        <div class="d-flex gap-2 mt-3">
+          <button id="addbulk" class="btn btn-copa">Importar lista</button>
+          <button id="seed" class="btn btn-outline-copa">Carregar exemplo</button>
+        </div>
+      </section>
+
+      <!-- Jogos cadastrados / lançar resultado -->
+      <section class="card-glass p-4">
+        <div class="d-flex justify-content-between align-items-center mb-2">
+          <h5 class="text-amarelo fw-bold mb-0">📋 Jogos e resultados</h5>
+          <span class="muted small" id="count"></span>
+        </div>
+        <div id="adminlist"><p class="muted">Carregando…</p></div>
+      </section>
+    </div>
+  </main>
+
+  <script type="module">
+    import {
+      isConfigured, ADMIN_PIN, onMatches, onConfig,
+      addMatch, deleteMatch, setResult, clearResult, saveScoring, randomId
+    } from "./js/db.js";
+    import { flagOf } from "./js/teams.js";
+
+    if (!isConfigured) document.getElementById("setup").style.display = "block";
+
+    // ---- PIN ----
+    const gate = document.getElementById("gate");
+    const panel = document.getElementById("panel");
+    function unlock() {
+      if (document.getElementById("pin").value === String(ADMIN_PIN)) {
+        sessionStorage.setItem("bolao_admin","1");
+        gate.style.display="none"; panel.style.display="block";
+      } else { document.getElementById("pinerr").textContent="PIN incorreto."; }
+    }
+    document.getElementById("unlock").onclick = unlock;
+    document.getElementById("pin").addEventListener("keydown",e=>{if(e.key==="Enter")unlock();});
+    if (sessionStorage.getItem("bolao_admin")==="1"){gate.style.display="none";panel.style.display="block";}
+
+    // ---- Pontuação ----
+    onConfig((s)=>{
+      document.getElementById("s-exact").value=s.exact;
+      document.getElementById("s-diff").value=s.diff;
+      document.getElementById("s-winner").value=s.winner;
+    });
+    document.getElementById("savescore").onclick = async () => {
+      await saveScoring({
+        exact: +document.getElementById("s-exact").value,
+        diff:  +document.getElementById("s-diff").value,
+        winner:+document.getElementById("s-winner").value
+      });
+      alert("Pontuação salva!");
+    };
+
+    // ---- Adicionar jogo ----
+    document.getElementById("addmatch").onclick = async () => {
+      const home=document.getElementById("m-home").value.trim();
+      const away=document.getElementById("m-away").value.trim();
+      if(!home||!away){alert("Informe os dois times.");return;}
+      await addMatch({
+        home, away,
+        datetime: document.getElementById("m-dt").value || "",
+        stage: document.getElementById("m-stage").value,
+        group: document.getElementById("m-group").value.trim().toUpperCase(),
+        finished:false
+      });
+      ["m-home","m-away","m-dt","m-group"].forEach(id=>document.getElementById(id).value="");
+    };
+
+    // ---- Importar em lote ----
+    document.getElementById("addbulk").onclick = async () => {
+      const lines=document.getElementById("bulk").value.split("\n").map(l=>l.trim()).filter(Boolean);
+      let n=0;
+      for(const line of lines){
+        const [teams,dt,stage,group]=line.split("|").map(p=>(p||"").trim());
+        const m=teams.split(/\s+x\s+/i);
+        if(m.length!==2)continue;
+        await addMatch({
+          home:m[0].trim(), away:m[1].trim(),
+          datetime: dt? dt.replace(" ","T") : "",
+          stage: stage||"Fase de Grupos",
+          group:(group||"").toUpperCase(), finished:false
+        });
+        n++;
+      }
+      document.getElementById("bulk").value="";
+      alert(n+" jogo(s) importado(s).");
+    };
+
+    // ---- Exemplo ----
+    document.getElementById("seed").onclick = async () => {
+      if(!confirm("Carregar 6 jogos de exemplo? Você pode apagá-los depois."))return;
+      const ex=[
+        ["Brasil","Sérvia","2026-06-13T16:00","A"],
+        ["México","Polônia","2026-06-13T19:00","A"],
+        ["Argentina","Croácia","2026-06-14T16:00","B"],
+        ["França","Marrocos","2026-06-14T19:00","B"],
+        ["Inglaterra","EUA","2026-06-15T16:00","C"],
+        ["Portugal","Gana","2026-06-15T19:00","C"]
+      ];
+      for(const [h,a,dt,g] of ex)
+        await addMatch({home:h,away:a,datetime:dt,stage:"Fase de Grupos",group:g,finished:false});
+      alert("Exemplo carregado!");
+    };
+
+    // ---- Lista de jogos ----
+    let matches={};
+    onMatches((m)=>{matches=m||{};renderList();});
+    const STAGE=["Fase de Grupos","Oitavas de Final","Quartas de Final","Semifinal","Disputa de 3º","Final"];
+
+    function renderList(){
+      const el=document.getElementById("adminlist");
+      const arr=Object.values(matches);
+      document.getElementById("count").textContent=arr.length+" jogo(s)";
+      if(!arr.length){el.innerHTML=`<p class="muted mb-0">Nenhum jogo cadastrado.</p>`;return;}
+      arr.sort((a,b)=>
+        STAGE.indexOf(a.stage)-STAGE.indexOf(b.stage) ||
+        String(a.datetime||"").localeCompare(String(b.datetime||"")));
+      el.innerHTML=arr.map(m=>{
+        const when=m.datetime?new Date(m.datetime).toLocaleString("pt-BR",{day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"}):"sem data";
+        return `<div class="match-card ${m.finished?"finished":""}">
+          <div class="d-flex justify-content-between mb-1">
+            <small class="muted">${m.stage||""}${m.group?` • Grupo ${m.group}`:""} • ${when}</small>
+            <button class="btn btn-sm btn-link text-danger p-0" data-del="${m.id}">excluir</button>
+          </div>
+          <div class="d-flex align-items-center justify-content-center gap-2 flex-wrap">
+            <div class="team justify-content-end" style="flex:1"><span class="text-truncate">${m.home}</span><span class="flag">${flagOf(m.home)}</span></div>
+            <input type="number" min="0" class="score-input" data-r="${m.id}" data-s="home" value="${m.finished?m.homeScore:""}" placeholder="-">
+            <span class="vs">x</span>
+            <input type="number" min="0" class="score-input" data-r="${m.id}" data-s="away" value="${m.finished?m.awayScore:""}" placeholder="-">
+            <div class="team" style="flex:1"><span class="flag">${flagOf(m.away)}</span><span class="text-truncate">${m.away}</span></div>
+          </div>
+          <div class="text-center mt-2">
+            <button class="btn btn-sm btn-copa" data-save="${m.id}">${m.finished?"Atualizar resultado":"Lançar resultado"}</button>
+            ${m.finished?`<button class="btn btn-sm btn-outline-light ms-2" data-clear="${m.id}">Reabrir</button>`:""}
+          </div>
+        </div>`;
+      }).join("");
+
+      el.querySelectorAll("[data-del]").forEach(b=>b.onclick=()=>{
+        if(confirm("Excluir este jogo? Os palpites continuam salvos, mas ele some do bolão."))deleteMatch(b.dataset.del);
+      });
+      el.querySelectorAll("[data-save]").forEach(b=>b.onclick=()=>{
+        const id=b.dataset.save;
+        const h=el.querySelector(`[data-r="${id}"][data-s="home"]`).value;
+        const a=el.querySelector(`[data-r="${id}"][data-s="away"]`).value;
+        if(h===""||a===""){alert("Preencha o placar.");return;}
+        setResult(id,h,a);
+      });
+      el.querySelectorAll("[data-clear]").forEach(b=>b.onclick=()=>clearResult(b.dataset.clear));
+    }
+  </script>
+</body>
+</html>

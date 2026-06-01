@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Preview · Bolão Água Camelo</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <!-- usa o CSS real da marca -->
+  <link href="css/bolao.css" rel="stylesheet">
+  <style>
+    .screen-label{border:2px dashed var(--accent);color:var(--accent);padding:.6rem 1rem;margin:3rem 0 1rem;font-weight:800;letter-spacing:-.01em}
+    .preview-note{border:2px solid var(--accent-2);padding:.8rem 1rem}
+  </style>
+</head>
+<body>
+
+  <nav class="bolao-nav py-3">
+    <div class="container d-flex align-items-center justify-content-between">
+      <a class="brand" href="#">Água Camelo <span>Bolão da Copa</span></a>
+      <div class="d-flex gap-3">
+        <a class="nav-link" href="#t1">Início</a>
+        <a class="nav-link" href="#t2">Palpites</a>
+        <a class="nav-link" href="#t3">Ranking</a>
+        <a class="nav-link" href="#t4">Admin</a>
+      </div>
+    </div>
+  </nav>
+
+  <main class="container py-4">
+    <div class="preview-note mb-2">
+      Página de <strong>preview</strong> com dados fictícios, só para ver o visual.
+      As telas reais usam exatamente este mesmo estilo.
+    </div>
+
+    <!-- TELA 1 -->
+    <div class="screen-label" id="t1">TELA 1 — Início</div>
+    <div class="row align-items-center g-5">
+      <div class="col-lg-7">
+        <h1 class="hero-title mb-3">Bolão da<br><span>Copa do Mundo 2026</span></h1>
+        <p class="lead muted mb-4">Dê seus palpites nos placares de cada jogo, acompanhe o
+          <span class="text-amarelo fw-bold">ranking ao vivo</span> e descubra quem entende
+          mais de futebol na nossa equipe.</p>
+        <div class="card-glass p-4" style="max-width:480px">
+          <label class="form-label fw-bold">Entre com seu nome para começar:</label>
+          <div class="input-group input-group-lg mb-2">
+            <input type="text" class="form-control" placeholder="Ex.: João Silva" value="Caio">
+            <button class="btn btn-copa">Entrar</button>
+          </div>
+          <small class="muted">Use sempre o mesmo nome para manter seus palpites.</small>
+        </div>
+      </div>
+      <div class="col-lg-5">
+        <div class="card-glass p-4">
+          <h5 class="text-amarelo fw-bold mb-3">Como funciona a pontuação</h5>
+          <ul class="list-unstyled mb-0">
+            <li class="mb-2"><strong class="text-amarelo">10</strong> pts — cravou o placar exato</li>
+            <li class="mb-2"><strong class="text-amarelo">7</strong> pts — acertou o vencedor <em>e</em> o saldo de gols</li>
+            <li class="mb-2"><strong class="text-amarelo">5</strong> pts — acertou só quem venceu (ou o empate)</li>
+            <li class="mb-2"><strong class="text-amarelo">0</strong> pts — errou o resultado</li>
+          </ul>
+          <div class="divider"></div>
+          <div class="d-flex gap-2">
+            <a href="#t2" class="btn btn-outline-copa flex-fill">Palpitar</a>
+            <a href="#t3" class="btn btn-outline-copa flex-fill">Ver ranking</a>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- TELA 2 -->
+    <div class="screen-label" id="t2">TELA 2 — Meus Palpites</div>
+    <div class="d-flex flex-wrap align-items-center justify-content-between mb-3 gap-2">
+      <div>
+        <h3 class="fw-bold mb-0">Meus Palpites</h3>
+        <span class="muted">Jogador: <strong class="text-amarelo">Caio</strong></span>
+      </div>
+      <div class="text-end">
+        <div class="muted small">Seus pontos até agora</div>
+        <div class="fw-bold fs-3 text-amarelo">17</div>
+      </div>
+    </div>
+    <h5 class="text-amarelo fw-bold mt-4 mb-2">Fase de Grupos</h5>
+
+    <div class="match-card finished locked">
+      <div class="d-flex justify-content-between align-items-center mb-1">
+        <small class="muted">Grupo A · 13/06 16:00</small>
+        <div><span class="pts-pill pts-10">+10</span><span class="result-pill ms-2">Final 2 x 1</span></div>
+      </div>
+      <div class="d-flex align-items-center justify-content-center gap-2 gap-md-3 flex-wrap">
+        <div class="team justify-content-end" style="flex:1"><span class="text-truncate">Brasil</span><span class="flag">🇧🇷</span></div>
+        <input type="number" class="score-input" value="2" disabled><span class="vs">x</span><input type="number" class="score-input" value="1" disabled>
+        <div class="team" style="flex:1"><span class="flag">🇷🇸</span><span class="text-truncate">Sérvia</span></div>
+      </div>
+    </div>
+    <div class="match-card finished locked">
+      <div class="d-flex justify-content-between align-items-center mb-1">
+        <small class="muted">Grupo A · 13/06 19:00</small>
+        <div><span class="pts-pill pts-mid">+7</span><span class="result-pill ms-2">Final 1 x 0</span></div>
+      </div>
+      <div class="d-flex align-items-center justify-content-center gap-2 gap-md-3 flex-wrap">
+        <div class="team justify-content-end" style="flex:1"><span class="text-truncate">México</span><span class="flag">🇲🇽</span></div>
+        <input type="number" class="score-input" value="2" disabled><span class="vs">x</span><input type="number" class="score-input" value="1" disabled>
+        <div class="team" style="flex:1"><span class="flag">🇵🇱</span><span class="text-truncate">Polônia</span></div>
+      </div>
+    </div>
+    <div class="match-card">
+      <div class="d-flex justify-content-between align-items-center mb-1"><small class="muted">Grupo B · 14/06 16:00</small></div>
+      <div class="d-flex align-items-center justify-content-center gap-2 gap-md-3 flex-wrap">
+        <div class="team justify-content-end" style="flex:1"><span class="text-truncate">Argentina</span><span class="flag">🇦🇷</span></div>
+        <input type="number" class="score-input" value="3"><span class="vs">x</span><input type="number" class="score-input" value="0">
+        <div class="team" style="flex:1"><span class="flag">🇭🇷</span><span class="text-truncate">Croácia</span></div>
+      </div>
+    </div>
+
+    <!-- TELA 3 -->
+    <div class="screen-label" id="t3">TELA 3 — Ranking &amp; Vencedor</div>
+    <h3 class="fw-bold mb-1">Ranking do Bolão</h3>
+    <p class="muted">12 de 12 jogos finalizados · 5 participantes</p>
+    <div class="winner-banner mt-3">
+      <div>CAMPEÃO DO BOLÃO</div>
+      <div class="who">Caio</div>
+      <div>87 pontos · 5 placares cravados</div>
+    </div>
+    <div class="card-glass p-3 p-md-4 mt-3">
+      <table class="rank-table">
+        <thead><tr><th>#</th><th>Participante</th><th class="text-center">Pts</th>
+          <th class="text-center d-none d-sm-table-cell">Cravadas</th>
+          <th class="text-center d-none d-sm-table-cell">Acertos</th></tr></thead>
+        <tbody>
+          <tr class="rank-row rank-1"><td class="rank-pos">1</td><td class="fw-bold">Caio <span class="badge bg-warning text-dark ms-1">você</span></td><td class="text-center fw-bold text-amarelo fs-5">87</td><td class="text-center d-none d-sm-table-cell">5</td><td class="text-center d-none d-sm-table-cell">10</td></tr>
+          <tr class="rank-row"><td class="rank-pos">2</td><td class="fw-bold">Marina</td><td class="text-center fw-bold text-amarelo fs-5">81</td><td class="text-center d-none d-sm-table-cell">4</td><td class="text-center d-none d-sm-table-cell">11</td></tr>
+          <tr class="rank-row"><td class="rank-pos">3</td><td class="fw-bold">Rafael</td><td class="text-center fw-bold text-amarelo fs-5">74</td><td class="text-center d-none d-sm-table-cell">3</td><td class="text-center d-none d-sm-table-cell">10</td></tr>
+          <tr class="rank-row"><td class="rank-pos">4</td><td class="fw-bold">Beatriz</td><td class="text-center fw-bold text-amarelo fs-5">68</td><td class="text-center d-none d-sm-table-cell">2</td><td class="text-center d-none d-sm-table-cell">9</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <h4 class="fw-bold mt-5 mb-3">Resultados dos jogos</h4>
+    <div class="match-card finished">
+      <div class="d-flex align-items-center justify-content-center gap-2 gap-md-3 flex-wrap">
+        <div class="team justify-content-end" style="flex:1"><span class="text-truncate">Brasil</span><span class="flag">🇧🇷</span></div>
+        <span class="result-pill">2 x 1</span>
+        <div class="team" style="flex:1"><span class="flag">🇷🇸</span><span class="text-truncate">Sérvia</span></div>
+      </div>
+      <div class="text-center small muted mt-1">Fase de Grupos · Grupo A</div>
+    </div>
+
+    <!-- TELA 4 -->
+    <div class="screen-label" id="t4">TELA 4 — Admin</div>
+    <div class="card-glass p-3 mb-4">
+      <span class="muted small">Os jogos e placares da Copa entram
+      <span class="text-amarelo fw-bold">automaticamente</span> (robô a cada ~15 min).
+      Use esta área só para ajustes manuais.</span>
+    </div>
+    <section class="card-glass p-4 mb-4">
+      <h5 class="text-amarelo fw-bold">Pontuação</h5>
+      <div class="row g-2 align-items-end">
+        <div class="col"><label class="form-label small">Placar exato</label><input type="number" class="form-control" value="10"></div>
+        <div class="col"><label class="form-label small">Vencedor + saldo</label><input type="number" class="form-control" value="7"></div>
+        <div class="col"><label class="form-label small">Só o vencedor</label><input type="number" class="form-control" value="5"></div>
+        <div class="col-auto"><button class="btn btn-copa">Salvar</button></div>
+      </div>
+    </section>
+    <section class="card-glass p-4">
+      <h5 class="text-amarelo fw-bold mb-3">Jogos e resultados</h5>
+      <div class="match-card finished">
+        <div class="d-flex justify-content-between mb-1">
+          <small class="muted">Fase de Grupos · Grupo A · 13/06 16:00</small>
+          <button class="btn btn-sm btn-link text-danger p-0">excluir</button>
+        </div>
+        <div class="d-flex align-items-center justify-content-center gap-2 flex-wrap">
+          <div class="team justify-content-end" style="flex:1"><span class="text-truncate">Brasil</span><span class="flag">🇧🇷</span></div>
+          <input type="number" class="score-input" value="2"><span class="vs">x</span><input type="number" class="score-input" value="1">
+          <div class="team" style="flex:1"><span class="flag">🇷🇸</span><span class="text-truncate">Sérvia</span></div>
+        </div>
+        <div class="text-center mt-2">
+          <button class="btn btn-sm btn-copa">Atualizar resultado</button>
+          <button class="btn btn-sm btn-outline-light ms-2">Reabrir</button>
+        </div>
+      </div>
+    </section>
+    <div class="py-5"></div>
+  </main>
+</body>
+</html>

@@ -1,0 +1,10 @@
+# Arquivos de desenvolvimento/teste locais (não vão pro site)
+dev-server.mjs
+test-fluxo.mjs
+test-login.mjs
+
+# Sistema / dependências
+node_modules/
+.DS_Store
+Thumbs.db
+*.log
