@@ -163,6 +163,22 @@ a { color: var(--accent); text-underline-offset: 3px; }
 .pts-mid { background: var(--accent-3); color: var(--ac-black); }
 .pts-0   { background: color-mix(in oklab, var(--ac-white), transparent 88%); color: var(--fg-muted); }
 
+/* ---- Selo "resultado confirmado" ---- */
+.confirm-tag {
+  display: inline-flex; align-items: center; gap: .3rem;
+  color: var(--accent-3); font-weight: 700; font-size: .8rem;
+}
+
+/* ---- Toast (aviso flutuante) ---- */
+.toast-bolao {
+  position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%);
+  z-index: 1080; padding: .7rem 1.2rem; font-weight: 800;
+  border: var(--bw) solid var(--ac-black); border-radius: var(--r-pill);
+  box-shadow: var(--shadow-sticker); max-width: 90vw; text-align: center;
+}
+.toast-ok  { background: var(--accent-3); color: var(--ac-black); }
+.toast-err { background: var(--accent-2); color: var(--ac-black); }
+
 /* ---- Ranking ---- */
 .rank-table { width: 100%; border-collapse: separate; border-spacing: 0 .4rem; }
 .rank-table th {

@@ -6,6 +6,7 @@
   <title>Admin • Bolão Copa 2026</title>
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
   <link href="css/bolao.css" rel="stylesheet">
+  <link rel="icon" type="image/svg+xml" href="https://flagcdn.com/br.svg">
 </head>
 <body>
 
@@ -16,6 +17,7 @@
         <a class="nav-link" href="index.html">Início</a>
         <a class="nav-link" href="palpites.html">Meus Palpites</a>
         <a class="nav-link" href="ranking.html">Ranking</a>
+        <a class="nav-link" href="participantes.html">Participantes</a>
         <a class="nav-link active" href="admin.html">Admin</a>
       </div>
     </div>
@@ -106,6 +108,8 @@ México x Polônia | 2026-06-13 19:00 | Fase de Grupos | A"></textarea>
     </div>
   </main>
 
+  <div id="toast" class="toast-bolao" style="display:none"></div>
+
   <script type="module">
     import {
       isConfigured, ADMIN_PIN, onMatches, onConfig,
@@ -114,6 +118,17 @@ México x Polônia | 2026-06-13 19:00 | Fase de Grupos | A"></textarea>
     import { flagOf } from "./js/teams.js";
 
     if (!isConfigured) document.getElementById("setup").style.display = "block";
+
+    // ---- Toast de confirmação ----
+    let toastTimer = null;
+    function showToast(msg, ok = true) {
+      const t = document.getElementById("toast");
+      t.textContent = msg;
+      t.className = "toast-bolao " + (ok ? "toast-ok" : "toast-err");
+      t.style.display = "block";
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(() => { t.style.display = "none"; }, 2500);
+    }
 
     // ---- PIN ----
     const gate = document.getElementById("gate");
@@ -140,14 +155,14 @@ México x Polônia | 2026-06-13 19:00 | Fase de Grupos | A"></textarea>
         diff:  +document.getElementById("s-diff").value,
         winner:+document.getElementById("s-winner").value
       });
-      alert("Pontuação salva!");
+      showToast("✅ Pontuação salva!");
     };
 
     // ---- Adicionar jogo ----
     document.getElementById("addmatch").onclick = async () => {
       const home=document.getElementById("m-home").value.trim();
       const away=document.getElementById("m-away").value.trim();
-      if(!home||!away){alert("Informe os dois times.");return;}
+      if(!home||!away){showToast("Informe os dois times.", false);return;}
       await addMatch({
         home, away,
         datetime: document.getElementById("m-dt").value || "",
@@ -175,7 +190,7 @@ México x Polônia | 2026-06-13 19:00 | Fase de Grupos | A"></textarea>
         n++;
       }
       document.getElementById("bulk").value="";
-      alert(n+" jogo(s) importado(s).");
+      showToast(n+" jogo(s) importado(s).");
     };
 
     // ---- Exemplo ----
@@ -191,7 +206,7 @@ México x Polônia | 2026-06-13 19:00 | Fase de Grupos | A"></textarea>
       ];
       for(const [h,a,dt,g] of ex)
         await addMatch({home:h,away:a,datetime:dt,stage:"Fase de Grupos",group:g,finished:false});
-      alert("Exemplo carregado!");
+      showToast("Exemplo carregado!");
     };
 
     // ---- Lista de jogos ----
@@ -231,14 +246,22 @@ México x Polônia | 2026-06-13 19:00 | Fase de Grupos | A"></textarea>
       el.querySelectorAll("[data-del]").forEach(b=>b.onclick=()=>{
         if(confirm("Excluir este jogo? Os palpites continuam salvos, mas ele some do bolão."))deleteMatch(b.dataset.del);
       });
-      el.querySelectorAll("[data-save]").forEach(b=>b.onclick=()=>{
+      el.querySelectorAll("[data-save]").forEach(b=>b.onclick=async ()=>{
         const id=b.dataset.save;
         const h=el.querySelector(`[data-r="${id}"][data-s="home"]`).value;
         const a=el.querySelector(`[data-r="${id}"][data-s="away"]`).value;
-        if(h===""||a===""){alert("Preencha o placar.");return;}
-        setResult(id,h,a);
+        if(h===""||a===""){showToast("Preencha o placar.", false);return;}
+        const m=matches[id];
+        b.disabled=true;
+        try {
+          await setResult(id,h,a);
+          showToast(`✅ Resultado salvo: ${m?m.home:""} ${h} x ${a} ${m?m.away:""}`);
+        } catch(e){ showToast("Erro ao salvar o resultado.", false); b.disabled=false; }
       });
-      el.querySelectorAll("[data-clear]").forEach(b=>b.onclick=()=>clearResult(b.dataset.clear));
+      el.querySelectorAll("[data-clear]").forEach(b=>b.onclick=async ()=>{
+        try { await clearResult(b.dataset.clear); showToast("Resultado reaberto."); }
+        catch(e){ showToast("Erro ao reabrir.", false); }
+      });
     }
   </script>
 </body>

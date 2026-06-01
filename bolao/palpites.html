@@ -6,6 +6,7 @@
   <title>Meus Palpites • Bolão Copa 2026</title>
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
   <link href="css/bolao.css" rel="stylesheet">
+  <link rel="icon" type="image/svg+xml" href="https://flagcdn.com/br.svg">
 </head>
 <body>
 
@@ -16,6 +17,7 @@
         <a class="nav-link" href="index.html">Início</a>
         <a class="nav-link active" href="palpites.html">Meus Palpites</a>
         <a class="nav-link" href="ranking.html">Ranking</a>
+        <a class="nav-link" href="participantes.html">Participantes</a>
         <a class="nav-link" href="admin.html">Admin</a>
       </div>
     </div>
@@ -31,7 +33,16 @@
       <div>
         <h3 class="fw-bold mb-0">Meus Palpites</h3>
         <span class="muted">Jogador: <strong id="who" class="text-amarelo">—</strong>
+          <a href="#" id="editname" class="ms-2 small">(editar nome)</a>
           <a href="#" id="change" class="ms-2 small">(sair)</a></span>
+        <div id="editrow" class="mt-2" style="display:none">
+          <div class="input-group input-group-sm" style="max-width:340px">
+            <input id="newname" class="form-control" maxlength="30"
+                   placeholder="Como você aparece no ranking">
+            <button id="savename" class="btn btn-copa">Salvar</button>
+          </div>
+          <div id="namemsg" class="small mt-1" style="display:none"></div>
+        </div>
       </div>
       <div class="text-end">
         <div class="muted small">Seus pontos até agora</div>
@@ -50,14 +61,14 @@
 
   <script type="module">
     import {
-      isConfigured, onAuth, logOut, onMatches, onBets, onConfig, saveBet, scoreBet
+      isConfigured, onAuth, logOut, onMatches, onBets, onConfig, saveBet, scoreBet, savePlayerProfile
     } from "./js/db.js";
     import { flagOf } from "./js/teams.js";
 
     if (!isConfigured) document.getElementById("setup").style.display = "block";
 
     // ---- identifica o jogador pelo login (Firebase Auth) ----
-    let playerId = null, playerName = "";
+    let playerId = null, playerName = "", playerEmail = "";
     let matches = {}, myBets = {}, scoring = null;
 
     document.getElementById("change").onclick = async (e) => {
@@ -68,11 +79,49 @@
       window.location.href = "index.html";
     };
 
+    // mostra sempre o nome; nunca o e-mail (fallback = parte antes do @)
+    const safeName = (n, email) => {
+      if (n && !n.includes("@")) return n;
+      const base = (n || email || "Participante").split("@")[0];
+      return base.charAt(0).toUpperCase() + base.slice(1);
+    };
+
+    // ---- editar nome de usuário ----
+    const editrow = document.getElementById("editrow");
+    const newname = document.getElementById("newname");
+    const namemsg = document.getElementById("namemsg");
+    document.getElementById("editname").onclick = (e) => {
+      e.preventDefault();
+      newname.value = playerName;
+      editrow.style.display = editrow.style.display === "none" ? "block" : "none";
+      namemsg.style.display = "none";
+      if (editrow.style.display === "block") newname.focus();
+    };
+    async function saveName() {
+      const v = newname.value.trim();
+      if (v.length < 2) { namemsg.style.display="block"; namemsg.className="small mt-1 text-danger"; namemsg.textContent="Nome muito curto."; return; }
+      try {
+        await savePlayerProfile(playerId, v, playerEmail);
+        playerName = v;
+        localStorage.setItem("bolao_name", v);
+        document.getElementById("who").textContent = v;
+        namemsg.style.display="block"; namemsg.className="small mt-1 text-success"; namemsg.textContent="✅ Nome salvo!";
+        setTimeout(() => { editrow.style.display = "none"; }, 900);
+      } catch (err) {
+        namemsg.style.display="block"; namemsg.className="small mt-1 text-danger"; namemsg.textContent="Erro ao salvar. Tente de novo.";
+      }
+    }
+    document.getElementById("savename").onclick = saveName;
+    newname.addEventListener("keydown", (e) => { if (e.key === "Enter") saveName(); });
+
     onAuth((user) => {
       if (!user) { window.location.href = "index.html"; return; }
       playerId = user.uid;
-      playerName = user.displayName || localStorage.getItem("bolao_name") || user.email;
+      playerEmail = user.email || "";
+      playerName = safeName(user.displayName || localStorage.getItem("bolao_name") || "", playerEmail);
       document.getElementById("who").textContent = playerName;
+      // garante que o perfil (nome) esteja salvo para aparecer no ranking/participantes
+      if (isConfigured) savePlayerProfile(playerId, playerName, playerEmail).catch(() => {});
       // agora que sabemos quem é, assina os palpites desse jogador
       onBets((all) => { myBets = (all || {})[playerId] || {}; render(); });
       render();
@@ -103,6 +152,8 @@
         `<span class="pts-pill ${pts===scoring.exact?"pts-10":pts>0?"pts-mid":"pts-0"}">+${pts}</span>`;
       const resultPill = m.finished
         ? `<span class="result-pill ms-2">Final ${m.homeScore} x ${m.awayScore}</span>` : "";
+      const confirmTag = m.finished
+        ? `<div class="confirm-tag mt-1">✅ Resultado confirmado</div>` : "";
 
       return `
       <div class="match-card ${m.finished?"finished":""} ${locked?"locked":""}">
@@ -110,6 +161,7 @@
           <small class="muted">${when}</small>
           <div>${ptsPill}${resultPill}</div>
         </div>
+        ${confirmTag}
         <div class="d-flex align-items-center justify-content-center gap-2 gap-md-3 flex-wrap">
           <div class="team justify-content-end" style="flex:1">
             <span class="text-truncate">${m.home}</span><span class="flag">${flagOf(m.home)}</span>
