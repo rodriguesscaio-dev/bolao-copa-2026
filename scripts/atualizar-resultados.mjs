@@ -82,8 +82,11 @@ async function buscarJogos() {
 }
 
 function montarJogo(m) {
-  const finished = m.status === "FINISHED";
   const ft = m.score?.fullTime || {};
+  // Só considera finalizado quando a API publicou o placar dos dois lados.
+  // A football-data marca status=FINISHED antes de soltar o fullTime, e marcar
+  // finished sem placar fazia o painel exibir "undefined x undefined".
+  const finished = m.status === "FINISHED" && ft.home != null && ft.away != null;
   return {
     id:        `wc-${m.id}`,
     home:      pt(m.homeTeam?.name),
@@ -92,8 +95,8 @@ function montarJogo(m) {
     stage:     STAGE[m.stage] || "Fase de Grupos",
     group:     m.group ? String(m.group).replace(/GROUP[_ ]?/i, "").trim() : "",
     finished,
-    homeScore: finished && ft.home != null ? Number(ft.home) : null,
-    awayScore: finished && ft.away != null ? Number(ft.away) : null,
+    homeScore: finished ? Number(ft.home) : null,
+    awayScore: finished ? Number(ft.away) : null,
     fonte:     "football-data.org"
   };
 }

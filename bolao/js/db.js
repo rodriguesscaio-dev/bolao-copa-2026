@@ -131,9 +131,18 @@ export const saveScoring = (scoring) => set(ref(db, "config/scoring"), scoring);
 // =====================================================================
 const sign = (a, b) => (a > b ? 1 : a < b ? -1 : 0);
 
+// Um jogo só tem resultado utilizável quando está finalizado E tem placar
+// numérico em ambos os lados. Evita estados "finalizado sem placar" (ex.: a
+// API marca FINISHED antes de publicar o placar) virarem "undefined x undefined".
+export function hasResult(match) {
+  return !!match && match.finished === true
+    && Number.isFinite(Number(match.homeScore))
+    && Number.isFinite(Number(match.awayScore));
+}
+
 // Quantos pontos um palpite vale contra um jogo já finalizado.
 export function scoreBet(bet, match, scoring = DEFAULT_SCORING) {
-  if (!bet || !match || !match.finished) return 0;
+  if (!bet || !hasResult(match)) return 0;
   const bh = Number(bet.home),   ba = Number(bet.away);
   const rh = Number(match.homeScore), ra = Number(match.awayScore);
   if ([bh, ba, rh, ra].some((n) => Number.isNaN(n))) return 0;
@@ -147,7 +156,7 @@ export function scoreBet(bet, match, scoring = DEFAULT_SCORING) {
 // Monta o ranking completo. Retorna lista ordenada com estatísticas.
 export function computeRanking(players, bets, matches, scoring = DEFAULT_SCORING) {
   const matchList = Object.values(matches || {});
-  const finished  = matchList.filter((m) => m.finished);
+  const finished  = matchList.filter(hasResult);
 
   const rows = Object.entries(players || {}).map(([id, p]) => {
     const myBets = (bets || {})[id] || {};

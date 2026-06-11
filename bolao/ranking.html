@@ -47,7 +47,7 @@
   </footer>
 
   <script type="module">
-    import { isConfigured, onMatches, onBets, onPlayers, onConfig, computeRanking } from "./js/db.js";
+    import { isConfigured, onMatches, onBets, onPlayers, onConfig, computeRanking, hasResult } from "./js/db.js";
     import { flagOf } from "./js/teams.js";
 
     if (!isConfigured) document.getElementById("setup").style.display = "block";
@@ -71,7 +71,7 @@
     function render() {
       if (!scoring) return;
       const matchArr = Object.values(matches);
-      const finished = matchArr.filter(m=>m.finished);
+      const finished = matchArr.filter(hasResult);
       const allDone = matchArr.length > 0 && finished.length === matchArr.length;
 
       document.getElementById("progress").textContent =

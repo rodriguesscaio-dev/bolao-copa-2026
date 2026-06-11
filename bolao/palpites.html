@@ -61,7 +61,7 @@
 
   <script type="module">
     import {
-      isConfigured, onAuth, logOut, onMatches, onBets, onConfig, saveBet, scoreBet, savePlayerProfile
+      isConfigured, onAuth, logOut, onMatches, onBets, onConfig, saveBet, scoreBet, savePlayerProfile, hasResult
     } from "./js/db.js";
     import { flagOf } from "./js/teams.js";
 
@@ -142,7 +142,8 @@
       const now = Date.now();
       const start = m.datetime ? new Date(m.datetime).getTime() : null;
       const locked = m.finished || (start && now >= start);
-      const pts = (m.finished && bet) ? scoreBet(bet, m, scoring) : null;
+      const done = hasResult(m);
+      const pts = (done && bet) ? scoreBet(bet, m, scoring) : null;
       if (pts != null) total += pts;
 
       const when = m.datetime
@@ -150,19 +151,21 @@
         : "";
       const ptsPill = pts == null ? "" :
         `<span class="pts-pill ${pts===scoring.exact?"pts-10":pts>0?"pts-mid":"pts-0"}">+${pts}</span>`;
-      const resultPill = m.finished
+      const resultPill = done
         ? `<span class="result-pill ms-2">Final ${m.homeScore} x ${m.awayScore}</span>` : "";
-      // Linha de status: prazo para palpitar / encerrado / resultado confirmado
-      const statusTag = m.finished
+      // Linha de status: prazo para palpitar / encerrado / aguardando placar / resultado confirmado
+      const statusTag = done
         ? `<div class="confirm-tag mt-1">✅ Resultado confirmado</div>`
-        : locked
-          ? `<div class="lock-tag mt-1">🔒 Palpites encerrados — a partida já começou</div>`
-          : (when
-              ? `<div class="deadline-tag mt-1">⏳ Você pode palpitar até ${when} (início do jogo)</div>`
-              : `<div class="deadline-tag mt-1">⏳ Palpites abertos</div>`);
+        : m.finished
+          ? `<div class="lock-tag mt-1">🔒 Jogo encerrado — aguardando placar oficial</div>`
+          : locked
+            ? `<div class="lock-tag mt-1">🔒 Palpites encerrados — a partida já começou</div>`
+            : (when
+                ? `<div class="deadline-tag mt-1">⏳ Você pode palpitar até ${when} (início do jogo)</div>`
+                : `<div class="deadline-tag mt-1">⏳ Palpites abertos</div>`);
 
       return `
-      <div class="match-card ${m.finished?"finished":""} ${locked?"locked":""}">
+      <div class="match-card ${done?"finished":""} ${locked?"locked":""}">
         <div class="d-flex justify-content-between align-items-center mb-1">
           <small class="muted">🗓️ ${when || "data a definir"}</small>
           <div>${ptsPill}${resultPill}</div>
