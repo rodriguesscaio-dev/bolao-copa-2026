@@ -3,7 +3,7 @@
 // =============================================================
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
 import {
-  getDatabase, ref, set, update, remove, onValue, get, child
+  getDatabase, ref, set, update, remove, onValue, get, child, goOffline, goOnline
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
 import {
   getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged, signOut
@@ -96,6 +96,22 @@ export async function getConfig() {
   if (!db) return DEFAULT_SCORING;
   const snap = await get(child(ref(db), "config/scoring"));
   return { ...DEFAULT_SCORING, ...(snap.val() || {}) };
+}
+
+// ---- Saúde da conexão em tempo real ----------------------------------
+// Observa o estado do socket do Firebase. cb(true) quando conectado,
+// cb(false) quando caiu. Usado para mostrar "ao vivo / reconectando".
+export function onConnection(cb) {
+  if (!db) { cb(false); return () => {}; }
+  return onValue(ref(db, ".info/connected"), (snap) => cb(snap.val() === true));
+}
+
+// Força o Firebase a refazer o socket. Útil ao voltar para a aba: se o
+// websocket morreu (PC dormiu, troca de rede), isso reabre e re-dispara
+// todos os onValue com os dados frescos — sem precisar de F5.
+export function forceReconnect() {
+  if (!db) return;
+  try { goOffline(db); goOnline(db); } catch (_) {}
 }
 
 // =====================================================================

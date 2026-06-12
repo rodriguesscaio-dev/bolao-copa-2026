@@ -70,9 +70,30 @@ const TEAMS = {
 
 const pt = (name) => (name ? (TEAMS[name] || name) : "A definir");
 
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+// fetch com retry: um blip de rede (ex.: "fetch failed") nao pode fazer o
+// robo pular um ciclo e atrasar o ranking. Tenta ate 4x com backoff.
+async function fetchRetry(url, opts = {}, tentativas = 4) {
+  let ultimoErro;
+  for (let i = 0; i < tentativas; i++) {
+    try {
+      const res = await fetch(url, opts);
+      if (res.ok) return res;
+      // 429/5xx valem nova tentativa; 4xx (ex.: token invalido) nao adianta
+      if (res.status !== 429 && res.status < 500) return res;
+      ultimoErro = new Error(`HTTP ${res.status}`);
+    } catch (e) {
+      ultimoErro = e;
+    }
+    if (i < tentativas - 1) await sleep(2000 * (i + 1));
+  }
+  throw ultimoErro || new Error("falha apos varias tentativas");
+}
+
 async function buscarJogos() {
   const url = `https://api.football-data.org/v4/competitions/${COMPETITION}/matches`;
-  const res = await fetch(url, { headers: { "X-Auth-Token": TOKEN } });
+  const res = await fetchRetry(url, { headers: { "X-Auth-Token": TOKEN } });
   if (!res.ok) {
     const txt = await res.text();
     throw new Error(`API football-data respondeu ${res.status}: ${txt.slice(0, 300)}`);
@@ -102,7 +123,7 @@ function montarJogo(m) {
 }
 
 async function gravar(payload) {
-  const res = await fetch(`${DB_URL}/matches.json`, {
+  const res = await fetchRetry(`${DB_URL}/matches.json`, {
     method: "PATCH",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload)

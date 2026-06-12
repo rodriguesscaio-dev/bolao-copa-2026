@@ -30,7 +30,8 @@
     </div>
 
     <h3 class="fw-bold mb-1">🏆 Ranking do Bolão</h3>
-    <p class="muted" id="progress">—</p>
+    <p class="muted mb-1" id="progress">—</p>
+    <p class="mb-0"><span id="connStatus" style="font-size:.8rem;font-weight:600;color:#22c55e">🟢 ao vivo</span></p>
 
     <div id="winner"></div>
 
@@ -47,7 +48,7 @@
   </footer>
 
   <script type="module">
-    import { isConfigured, onMatches, onBets, onPlayers, onConfig, computeRanking, hasResult } from "./js/db.js";
+    import { isConfigured, onMatches, onBets, onPlayers, onConfig, computeRanking, hasResult, onConnection, forceReconnect } from "./js/db.js";
     import { flagOf } from "./js/teams.js";
 
     if (!isConfigured) document.getElementById("setup").style.display = "block";
@@ -65,6 +66,19 @@
     onMatches((m)=>{matches=m||{};render();});
     onBets((b)=>{bets=b||{};render();});
     onPlayers((p)=>{players=p||{};render();});
+
+    // Indicador de conexão em tempo real + auto-reconexão.
+    const connEl = document.getElementById("connStatus");
+    onConnection((ok)=>{
+      if (!connEl) return;
+      connEl.textContent = ok ? "🟢 ao vivo" : "🟠 reconectando…";
+      connEl.style.color = ok ? "#22c55e" : "#f59e0b";
+    });
+    // Ao voltar para a aba (ou focar a janela), refaz o socket: se ele tinha
+    // morrido com a aba em segundo plano, os dados voltam a fluir na hora.
+    document.addEventListener("visibilitychange", ()=>{ if(!document.hidden) forceReconnect(); });
+    window.addEventListener("focus", ()=>forceReconnect());
+    window.addEventListener("online", ()=>forceReconnect());
 
     const myId = localStorage.getItem("bolao_id");
 
