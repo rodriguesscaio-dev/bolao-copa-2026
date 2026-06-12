@@ -39,6 +39,16 @@
       <div id="ranktable"><p class="muted">Carregando…</p></div>
     </div>
 
+    <div class="card-glass p-3 p-md-4 mt-3">
+      <h5 class="text-amarelo fw-bold mb-3">Como funciona a pontuação</h5>
+      <ul class="list-unstyled mb-0">
+        <li class="mb-2"><strong class="text-amarelo" id="p-exact">10</strong> pts — cravou o placar exato</li>
+        <li class="mb-2"><strong class="text-amarelo" id="p-diff">7</strong> pts — acertou o vencedor <em>e</em> o saldo de gols</li>
+        <li class="mb-2"><strong class="text-amarelo" id="p-winner">5</strong> pts — acertou só quem venceu (ou o empate)</li>
+        <li class="mb-0"><strong class="text-amarelo">0</strong> pts — errou o resultado</li>
+      </ul>
+    </div>
+
     <h4 class="fw-bold mt-5 mb-3">📋 Resultados dos jogos</h4>
     <div id="results"><p class="muted">Carregando…</p></div>
   </main>
@@ -62,7 +72,12 @@
     };
 
     let matches = {}, bets = {}, players = {}, scoring = null;
-    onConfig((s)=>{scoring=s;render();});
+    onConfig((s)=>{
+      scoring=s;
+      const set=(id,v)=>{const el=document.getElementById(id); if(el) el.textContent=v;};
+      set("p-exact", s.exact); set("p-diff", s.diff); set("p-winner", s.winner);
+      render();
+    });
     onMatches((m)=>{matches=m||{};render();});
     onBets((b)=>{bets=b||{};render();});
     onPlayers((p)=>{players=p||{};render();});
