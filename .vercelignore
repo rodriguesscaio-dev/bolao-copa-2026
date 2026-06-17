@@ -3,3 +3,5 @@ test-fluxo.mjs
 test-login.mjs
 .github
 PROMPT-BANNER.md
+.sofa-profile
+scripts
