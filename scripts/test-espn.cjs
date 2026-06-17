@@ -14,7 +14,7 @@ const TEAMS = {
   "Senegal":"Senegal","Tunisia":"Tunísia","Algeria":"Argélia","Egypt":"Egito","Cameroon":"Camarões","Ghana":"Gana",
   "Nigeria":"Nigéria","Côte d'Ivoire":"Costa do Marfim","Ivory Coast":"Costa do Marfim","South Africa":"África do Sul",
   "Mali":"Mali","Cape Verde":"Cabo Verde","DR Congo":"Congo (RD)","Congo DR":"Congo (RD)",
-  "Bosnia and Herzegovina":"Bósnia e Herzegovina","Bosnia & Herzegovina":"Bósnia e Herzegovina","Japan":"Japão",
+  "Bosnia and Herzegovina":"Bósnia e Herzegovina","Bosnia & Herzegovina":"Bósnia e Herzegovina","Bosnia-Herzegovina":"Bósnia e Herzegovina","Cape Verde Islands":"Cabo Verde","Japan":"Japão",
   "Korea Republic":"Coreia do Sul","South Korea":"Coreia do Sul","Saudi Arabia":"Arábia Saudita","IR Iran":"Irã",
   "Iran":"Irã","Iraq":"Iraque","Qatar":"Catar","United Arab Emirates":"Emirados Árabes","Australia":"Austrália",
   "New Zealand":"Nova Zelândia","Uzbekistan":"Uzbequistão","Jordan":"Jordânia",
