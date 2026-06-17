@@ -115,6 +115,29 @@ export function forceReconnect() {
 }
 
 // =====================================================================
+//  Atualização de placares "ao abrir o site" (serverless /api/refresh)
+//  Quem está com o bolão aberto durante os jogos cutuca a função na nuvem,
+//  que puxa os placares (football-data) e grava no Firebase — aí o onValue
+//  reflete pra todo mundo em tempo real. Sem cron, sem PC ligado.
+//  Trava dupla: por sessão (aqui, 60s) e global (no servidor, via meta/lastSync).
+//  Só dispara se houver jogo "na janela" (do início até ~3h depois).
+// =====================================================================
+let _lastPoke = 0;
+export function pokeRefresh(matches) {
+  const now = Date.now();
+  if (now - _lastPoke < 60000) return;            // no máximo 1x/min por aba
+  const arr = Object.values(matches || {});
+  const inWindow = arr.some((m) => {
+    if (!m || !m.datetime) return false;
+    const s = new Date(m.datetime).getTime();
+    return now >= s - 10 * 60000 && now <= s + 3 * 3600000;
+  });
+  if (!inWindow) return;                           // fora de jogo, não cutuca
+  _lastPoke = now;
+  fetch("/api/refresh").catch(() => {});           // fire-and-forget
+}
+
+// =====================================================================
 //  Escritas
 // =====================================================================
 export const saveBet = (playerId, matchId, home, away) =>

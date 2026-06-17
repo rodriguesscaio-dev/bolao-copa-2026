@@ -58,7 +58,7 @@
   </footer>
 
   <script type="module">
-    import { isConfigured, onMatches, onBets, onPlayers, onConfig, computeRanking, hasResult, onConnection, forceReconnect } from "./js/db.js";
+    import { isConfigured, onMatches, onBets, onPlayers, onConfig, computeRanking, hasResult, onConnection, forceReconnect, pokeRefresh } from "./js/db.js";
     import { flagOf } from "./js/teams.js";
 
     if (!isConfigured) document.getElementById("setup").style.display = "block";
@@ -78,7 +78,7 @@
       set("p-exact", s.exact); set("p-diff", s.diff); set("p-winner", s.winner);
       render();
     });
-    onMatches((m)=>{matches=m||{};render();});
+    onMatches((m)=>{matches=m||{};render();pokeRefresh(matches);});
     onBets((b)=>{bets=b||{};render();});
     onPlayers((p)=>{players=p||{};render();});
 

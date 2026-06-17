@@ -77,7 +77,7 @@
 
   <script type="module">
     import {
-      isConfigured, onAuth, logOut, onMatches, onBets, onConfig, saveBet, scoreBet, savePlayerProfile, hasResult
+      isConfigured, onAuth, logOut, onMatches, onBets, onConfig, saveBet, scoreBet, savePlayerProfile, hasResult, pokeRefresh
     } from "./js/db.js";
     import { flagOf } from "./js/teams.js";
 
@@ -161,7 +161,7 @@
     });
 
     onConfig((s) => { scoring = s; render(); });
-    onMatches((m) => { matches = m || {}; render(); });
+    onMatches((m) => { matches = m || {}; render(); pokeRefresh(matches); });
 
     const STAGE_ORDER = ["Fase de Grupos","Oitavas de Final","Quartas de Final","Semifinal","Disputa de 3º","Final"];
     function stageRank(s){ const i = STAGE_ORDER.indexOf(s); return i < 0 ? 99 : i; }
