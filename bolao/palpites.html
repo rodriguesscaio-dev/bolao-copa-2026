@@ -52,12 +52,28 @@
 
     <div id="savebar" class="muted small mb-3">💾 Os palpites salvam sozinhos ao digitar.</div>
 
+    <div class="d-flex align-items-center gap-2 mb-3 flex-wrap">
+      <span class="muted small">Organizar:</span>
+      <div class="view-toggle" id="viewToggle">
+        <button type="button" class="vt-btn" data-view="grupo">Por grupo</button>
+        <button type="button" class="vt-btn" data-view="data">Por data</button>
+      </div>
+    </div>
+
     <div id="list"><p class="muted">Carregando jogos…</p></div>
   </main>
 
   <footer class="container text-center muted py-4">
-    <small>Dica: você só pode palpitar até o início de cada jogo.</small>
+    <small>Dica: você só pode palpitar até o início de cada jogo. Toque em um jogo para ver estatísticas (dados: SofaScore).</small>
   </footer>
+
+  <!-- Modal de detalhes do jogo -->
+  <div id="modalOverlay" class="modal-overlay" style="display:none">
+    <div class="modal-box">
+      <button type="button" class="modal-close" id="modalClose" aria-label="Fechar">✕</button>
+      <div id="modalContent"></div>
+    </div>
+  </div>
 
   <script type="module">
     import {
@@ -70,6 +86,7 @@
     // ---- identifica o jogador pelo login (Firebase Auth) ----
     let playerId = null, playerName = "", playerEmail = "";
     let matches = {}, myBets = {}, scoring = null;
+    let viewMode = localStorage.getItem("bolao_view") || "grupo";
 
     document.getElementById("change").onclick = async (e) => {
       e.preventDefault();
@@ -113,6 +130,22 @@
     }
     document.getElementById("savename").onclick = saveName;
     newname.addEventListener("keydown", (e) => { if (e.key === "Enter") saveName(); });
+
+    // ---- toggle de visualização (por grupo / por data) ----
+    const viewToggle = document.getElementById("viewToggle");
+    function syncToggle() {
+      viewToggle.querySelectorAll(".vt-btn").forEach((b) =>
+        b.classList.toggle("active", b.dataset.view === viewMode));
+    }
+    viewToggle.querySelectorAll(".vt-btn").forEach((b) => {
+      b.onclick = () => {
+        viewMode = b.dataset.view;
+        localStorage.setItem("bolao_view", viewMode);
+        syncToggle();
+        render();
+      };
+    });
+    syncToggle();
 
     onAuth((user) => {
       if (!user) { window.location.href = "index.html"; return; }
@@ -185,32 +218,22 @@
           </div>
         </div>
         ${locked && !bet ? `<div class="text-center small text-warning mt-1">Você não palpitou neste jogo.</div>`:""}
+        <div class="text-center mt-2">
+          <button type="button" class="details-btn" data-details="${m.id}">
+            ${done ? "📊 Estatísticas do jogo" : "ℹ️ Informações do jogo"}
+          </button>
+        </div>
       </div>`;
     }
 
-    function render() {
-      if (!scoring) return;
-      const list = document.getElementById("list");
-      const arr = Object.values(matches);
-      total = 0;
+    const byTime = (a,b) => String(a.datetime||"").localeCompare(String(b.datetime||""));
 
-      if (!arr.length) {
-        list.innerHTML = `<div class="card-glass p-4 text-center muted">
-          Nenhum jogo cadastrado ainda. Peça para o administrador cadastrar os
-          jogos na aba <a href="admin.html">Admin</a>.</div>`;
-        document.getElementById("mypts").textContent = "0";
-        return;
-      }
-
-      const byTime = (a,b) => String(a.datetime||"").localeCompare(String(b.datetime||""));
-      // descobre em qual grupo o Brasil está
+    // ---- Modo "por grupo": Fase de Grupos separada por grupo + mata-mata por fase ----
+    function renderByGroup(arr) {
       const brBrasil = arr.find(m => m.stage === "Fase de Grupos" && (m.home === "Brasil" || m.away === "Brasil"));
       const brazilGroup = brBrasil ? brBrasil.group : null;
+      let html = "", hiddenKO = 0;
 
-      let html = "";
-      let hiddenKO = 0;
-
-      // ---- FASE DE GRUPOS, separada por grupo (A, B, C…) ----
       const groupMatches = arr.filter(m => m.stage === "Fase de Grupos" && isDefined(m));
       const letters = [...new Set(groupMatches.map(m => m.group).filter(Boolean))].sort();
       for (const letter of letters) {
@@ -226,7 +249,6 @@
         </section>`;
       }
 
-      // ---- MATA-MATA: só os jogos com adversários já definidos ----
       const koStages = STAGE_ORDER.filter(s => s !== "Fase de Grupos");
       for (const stage of koStages) {
         const all = arr.filter(m => m.stage === stage);
@@ -245,10 +267,44 @@
           🔒 ${hiddenKO} jogo(s) do mata-mata ainda sem adversários definidos.
           Eles aparecem aqui automaticamente conforme a Copa avança.</p>`;
       }
+      return html;
+    }
 
-      list.innerHTML = html;
+    // ---- Modo "por data": todos os jogos definidos, em ordem, agrupados por dia ----
+    function renderByDate(arr) {
+      const games = arr.filter(isDefined).sort(byTime);
+      let html = "", curDay = "";
+      for (const m of games) {
+        const d = m.datetime ? new Date(m.datetime) : null;
+        const dayKey = d ? d.toLocaleDateString("pt-BR", { weekday:"long", day:"2-digit", month:"long" }) : "Data a definir";
+        if (dayKey !== curDay) {
+          curDay = dayKey;
+          const label = dayKey.charAt(0).toUpperCase() + dayKey.slice(1);
+          html += `<h5 class="date-header">${label}</h5>`;
+        }
+        html += matchCard(m);
+      }
+      return html;
+    }
+
+    function render() {
+      if (!scoring) return;
+      const list = document.getElementById("list");
+      const arr = Object.values(matches);
+      total = 0;
+
+      if (!arr.length) {
+        list.innerHTML = `<div class="card-glass p-4 text-center muted">
+          Nenhum jogo cadastrado ainda. Peça para o administrador cadastrar os
+          jogos na aba <a href="admin.html">Admin</a>.</div>`;
+        document.getElementById("mypts").textContent = "0";
+        return;
+      }
+
+      list.innerHTML = viewMode === "data" ? renderByDate(arr) : renderByGroup(arr);
       document.getElementById("mypts").textContent = total;
       wireInputs();
+      wireDetails();
     }
 
     let timers = {};
@@ -280,9 +336,104 @@
       });
     }
 
+    // ===== Modal de detalhes / estatísticas do jogo (dados SofaScore) =====
+    const overlay = document.getElementById("modalOverlay");
+    const modalContent = document.getElementById("modalContent");
+
+    function wireDetails() {
+      document.querySelectorAll(".details-btn").forEach((b) => {
+        b.onclick = () => openModal(b.dataset.details);
+      });
+    }
+    function closeModal() { overlay.style.display = "none"; modalContent.innerHTML = ""; }
+    document.getElementById("modalClose").onclick = closeModal;
+    overlay.addEventListener("click", (e) => { if (e.target === overlay) closeModal(); });
+    document.addEventListener("keydown", (e) => { if (e.key === "Escape" && overlay.style.display !== "none") closeModal(); });
+
+    const num = (v) => { const n = parseFloat(String(v).replace(/[^0-9.\-]/g, "")); return Number.isFinite(n) ? n : 0; };
+
+    function statBar(s) {
+      const h = num(s.home), a = num(s.away), t = h + a;
+      const hp = t ? Math.round((h / t) * 100) : 50;
+      return `
+        <div class="mstat-row">
+          <span class="mstat-val">${s.home}</span>
+          <span class="mstat-label">${s.label}</span>
+          <span class="mstat-val away">${s.away}</span>
+        </div>
+        <div class="mstat-track">
+          <span class="mstat-fill-h" style="width:${hp}%"></span>
+          <span class="mstat-fill-a" style="width:${100 - hp}%"></span>
+        </div>`;
+    }
+
+    function scorersBlock(goals) {
+      const li = (g) => `<li><span class="scorer-min">${g.minute != null ? g.minute + "'" : ""}</span> ${g.player}${g.note ? ` <span class="scorer-note">(${g.note})</span>` : ""}</li>`;
+      const gh = goals.filter((g) => g.team === "home");
+      const ga = goals.filter((g) => g.team === "away");
+      if (!gh.length && !ga.length) return "";
+      return `
+        <div class="m-section-title">⚽ Gols</div>
+        <div class="scorers">
+          <ul class="home-col">${gh.map(li).join("") || "<li class='muted'>—</li>"}</ul>
+          <ul class="away-col">${ga.map(li).join("") || "<li class='muted'>—</li>"}</ul>
+        </div>`;
+    }
+
+    function openModal(id) {
+      const m = matches[id];
+      if (!m) return;
+      const done = hasResult(m);
+      const sofa = m.sofa || {};
+      const when = m.datetime
+        ? new Date(m.datetime).toLocaleString("pt-BR", { weekday:"short", day:"2-digit", month:"2-digit", hour:"2-digit", minute:"2-digit" })
+        : "data a definir";
+      const stageLabel = (m.stage === "Fase de Grupos" && m.group) ? `Fase de Grupos · Grupo ${m.group}` : (m.stage || "");
+      const scoreBlock = done
+        ? `<span class="m-score">${m.homeScore} <span class="m-vs">x</span> ${m.awayScore}</span>`
+        : `<span class="m-vs">×</span>`;
+
+      const bet = myBets[id];
+      const pts = (done && bet) ? scoreBet(bet, m, scoring) : null;
+      const betBlock = bet
+        ? `<div class="m-bet">Seu palpite: ${bet.home} x ${bet.away}
+             ${pts != null ? `<span class="pts-pill ${pts===scoring.exact?"pts-10":pts>0?"pts-mid":"pts-0"}">+${pts}</span>` : ""}</div>`
+        : (done ? `<div class="m-bet muted">Você não palpitou neste jogo.</div>` : "");
+
+      let body = "";
+      if (done && (sofa.stats?.length || sofa.goals?.length)) {
+        body += scorersBlock(sofa.goals || []);
+        if (sofa.stats?.length) {
+          body += `<div class="m-section-title">📊 Estatísticas</div>
+            <div class="m-legend"><span class="lg-h">${m.home}</span><span class="lg-a">${m.away}</span></div>
+            ${sofa.stats.map(statBar).join("")}`;
+        }
+      } else if (done) {
+        body += `<div class="m-note">Estatísticas ainda não disponíveis para este jogo.</div>`;
+      } else {
+        body += `<div class="m-note">⚽ Gols e estatísticas aparecem aqui após o apito final.</div>`;
+      }
+
+      modalContent.innerHTML = `
+        ${stageLabel ? `<div class="m-stage">${stageLabel}</div>` : ""}
+        <div class="m-head">
+          <div class="m-team"><span class="flag">${flagOf(m.home)}</span><span class="nm">${m.home}</span></div>
+          ${scoreBlock}
+          <div class="m-team"><span class="flag">${flagOf(m.away)}</span><span class="nm">${m.away}</span></div>
+        </div>
+        <div class="m-meta">
+          <span>🗓️ ${when}</span>${sofa.venue ? `<span>📍 ${sofa.venue}</span>` : ""}
+        </div>
+        ${betBlock}
+        ${body}
+        <div class="m-note" style="font-size:.72rem;margin-top:1rem">Dados: SofaScore</div>`;
+      overlay.style.display = "flex";
+    }
+
     // Atualiza os rótulos de prazo/encerrado a cada 30s (sem atrapalhar quem digita)
     setInterval(() => {
       if (document.activeElement && document.activeElement.classList.contains("score-input")) return;
+      if (overlay.style.display !== "none") return; // não re-renderiza com o modal aberto
       render();
     }, 30000);
   </script>

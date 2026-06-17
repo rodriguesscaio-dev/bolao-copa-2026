@@ -3,6 +3,9 @@ dev-server.mjs
 test-fluxo.mjs
 test-login.mjs
 
+# Perfil do Chrome usado pelo robô SofaScore (cookie de clearance) — local
+.sofa-profile/
+
 # Sistema / dependências
 node_modules/
 .DS_Store
