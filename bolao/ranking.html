@@ -164,7 +164,7 @@
       } else {
         finished.sort((a,b)=>String(b.datetime||"").localeCompare(String(a.datetime||"")));
         rEl.innerHTML = finished.map(m=>`
-          <div class="match-card finished">
+          <div class="match-card finished match-clickable" data-match="${m.id}" tabindex="0" role="button" aria-label="Ver palpites de ${m.home} x ${m.away}">
             <div class="d-flex align-items-center justify-content-center gap-2 gap-md-3 flex-wrap">
               <div class="team justify-content-end" style="flex:1">
                 <span class="text-truncate">${m.home}</span><span class="flag">${flagOf(m.home)}</span>
@@ -176,10 +176,12 @@
             </div>
             <div class="confirm-tag text-center mt-1">✅ Resultado confirmado</div>
             <div class="text-center small muted mt-1">${m.stage||""}${m.group?` • Grupo ${m.group}`:""}</div>
+            <div class="text-center small text-amarelo mt-1">👉 ver palpites de todos</div>
           </div>`).join("");
       }
 
       wireRankRows();
+      wireMatchCards();
     }
 
     // ===== Modal: palpites de um participante, jogo a jogo =====
@@ -191,6 +193,14 @@
         const open = () => openPlayerModal(row.dataset.player);
         row.onclick = open;
         row.onkeydown = (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); open(); } };
+      });
+    }
+
+    function wireMatchCards() {
+      document.querySelectorAll(".match-clickable").forEach((card) => {
+        const open = () => openMatchModal(card.dataset.match);
+        card.onclick = open;
+        card.onkeydown = (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); open(); } };
       });
     }
 
@@ -267,6 +277,54 @@
         </div>
         <div class="m-section-title">Jogo a jogo</div>
         ${finished.length ? gameRows : `<div class="m-note">Nenhum jogo finalizado ainda.</div>`}`;
+      overlay.style.display = "flex";
+    }
+
+    // ===== Modal: palpites de TODOS num jogo já realizado =====
+    function openMatchModal(matchId) {
+      const m = matches[matchId];
+      if (!m || !scoring || !hasResult(m)) return;
+
+      const stageLabel = (m.stage === "Fase de Grupos" && m.group)
+        ? `Fase de Grupos · Grupo ${m.group}` : (m.stage || "");
+
+      // monta uma linha por participante que palpitou neste jogo
+      const list = Object.entries(players || {}).map(([id, p]) => {
+        const bet = (bets || {})[id]?.[matchId];
+        if (!bet) return null;
+        const pts = scoreBet(bet, m, scoring);
+        return { name: safeName(p.name), home: bet.home, away: bet.away, pts, c: classify(pts) };
+      }).filter(Boolean);
+
+      // ordena: mais pontos primeiro, depois nome
+      list.sort((a,b)=> b.pts - a.pts || a.name.localeCompare(b.name));
+
+      const nCravadas = list.filter(x => x.c.kind === "cravada").length;
+      const nAcertos  = list.filter(x => x.pts > 0).length;
+      const semPalpite = Object.keys(players || {}).length - list.length;
+
+      const peopleRows = list.map((x) => `
+        <div class="pp-row pd-${x.c.kind}">
+          <span class="pp-name">${x.name}</span>
+          <span class="pp-bet">${x.home} x ${x.away}</span>
+          <span class="pts-pill ${x.c.cls}">${x.c.tag} +${x.pts}</span>
+        </div>`).join("");
+
+      modalContent.innerHTML = `
+        ${stageLabel ? `<div class="m-stage">${stageLabel}</div>` : ""}
+        <div class="m-head">
+          <div class="m-team"><span class="flag">${flagOf(m.home)}</span><span class="nm">${m.home}</span></div>
+          <span class="m-score">${m.homeScore} <span class="m-vs">x</span> ${m.awayScore}</span>
+          <div class="m-team"><span class="flag">${flagOf(m.away)}</span><span class="nm">${m.away}</span></div>
+        </div>
+        <div class="pd-summary">
+          <div class="pd-chip"><b>${list.length}</b><span>palpitaram</span></div>
+          <div class="pd-chip pd-chip-gold"><b>${nCravadas}</b><span>cravaram 🎯</span></div>
+          <div class="pd-chip"><b>${nAcertos}</b><span>acertaram ✅</span></div>
+        </div>
+        <div class="m-section-title">Palpites de todos</div>
+        ${list.length ? peopleRows : `<div class="m-note">Ninguém palpitou neste jogo.</div>`}
+        ${semPalpite > 0 ? `<div class="m-note">+ ${semPalpite} participante(s) não palpitaram neste jogo.</div>` : ""}`;
       overlay.style.display = "flex";
     }
   </script>

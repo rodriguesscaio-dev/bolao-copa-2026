@@ -360,3 +360,16 @@ a { color: var(--accent); text-underline-offset: 3px; }
 .pd-when { font-size: .74rem; color: var(--fg-muted); min-width: 34px; }
 .pd-bet { font-size: .82rem; font-weight: 700; flex: 1; text-align: center; }
 .pd-foot .pts-pill { font-size: .72rem; white-space: nowrap; }
+
+/* ---- Resultados: card clicável + palpites de todos no jogo ---- */
+.match-clickable { cursor: pointer; }
+.match-clickable:focus-visible { outline: none; border-color: var(--accent); }
+
+.pp-row { display: flex; align-items: center; gap: .5rem; background: var(--ac-black);
+  border: var(--bw) solid var(--line); border-left-width: 4px; padding: .45rem .6rem; margin-top: .45rem; }
+.pp-row.pd-cravada { border-left-color: var(--accent); }
+.pp-row.pd-acerto  { border-left-color: var(--accent-3); }
+.pp-row.pd-erro    { border-left-color: var(--accent-2); }
+.pp-name { font-weight: 800; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pp-bet { font-weight: 700; font-size: .85rem; white-space: nowrap; color: var(--accent); }
+.pp-row .pts-pill { font-size: .7rem; white-space: nowrap; }
