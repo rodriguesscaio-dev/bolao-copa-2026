@@ -329,3 +329,34 @@ a { color: var(--accent); text-underline-offset: 3px; }
 .mstat-fill-a { background: var(--accent-2); margin-left: auto; }
 
 .m-note { text-align: center; color: var(--fg-muted); margin-top: .9rem; font-size: .85rem; }
+
+/* ---- Ranking: linha clicável ---- */
+.rank-clickable { cursor: pointer; transition: background .12s ease; }
+.rank-clickable:hover td,
+.rank-clickable:focus-visible td { background: color-mix(in oklab, var(--accent), transparent 86%); }
+.rank-clickable:focus-visible { outline: none; }
+.rank-clickable:focus-visible td:first-child { border-left-color: var(--accent); }
+
+/* ---- Modal: detalhe do participante (jogo a jogo) ---- */
+.pd-name { text-align: center; font-weight: 800; font-size: 1.4rem; line-height: 1.1; margin-bottom: .7rem; }
+.pd-summary { display: flex; flex-wrap: wrap; justify-content: center; gap: .5rem; }
+.pd-chip { display: flex; flex-direction: column; align-items: center; min-width: 72px;
+  background: var(--ac-black); border: var(--bw) solid var(--line); padding: .45rem .6rem; }
+.pd-chip b { font-size: 1.25rem; font-weight: 800; color: var(--accent); line-height: 1; }
+.pd-chip span { font-size: .7rem; color: var(--fg-muted); margin-top: .2rem; white-space: nowrap; }
+.pd-chip-gold b { color: var(--accent-3); }
+
+.pd-row { background: var(--ac-black); border: var(--bw) solid var(--line);
+  border-left-width: 4px; padding: .5rem .7rem; margin-top: .5rem; }
+.pd-row.pd-cravada { border-left-color: var(--accent); }
+.pd-row.pd-acerto  { border-left-color: var(--accent-3); }
+.pd-row.pd-erro    { border-left-color: var(--accent-2); }
+.pd-row.pd-none    { border-left-color: var(--line); opacity: .72; }
+.pd-game { display: flex; align-items: center; justify-content: center; gap: .5rem; font-weight: 800; }
+.pd-game .flag-img { width: 30px; height: 22px; }
+.pd-res { font-size: 1.05rem; color: var(--accent); white-space: nowrap; padding: 0 .2rem; }
+.pd-foot { display: flex; align-items: center; justify-content: space-between; gap: .4rem;
+  flex-wrap: wrap; margin-top: .4rem; }
+.pd-when { font-size: .74rem; color: var(--fg-muted); min-width: 34px; }
+.pd-bet { font-size: .82rem; font-weight: 700; flex: 1; text-align: center; }
+.pd-foot .pts-pill { font-size: .72rem; white-space: nowrap; }

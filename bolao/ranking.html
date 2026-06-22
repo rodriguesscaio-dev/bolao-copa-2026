@@ -37,6 +37,7 @@
 
     <div class="card-glass p-3 p-md-4 mt-3">
       <div id="ranktable"><p class="muted">Carregando…</p></div>
+      <p class="muted small mb-0 mt-2">👉 Toque em um participante para ver os palpites jogo a jogo (acertos e cravadas).</p>
     </div>
 
     <div class="card-glass p-3 p-md-4 mt-3">
@@ -57,8 +58,16 @@
     <small>Atualiza em tempo real conforme os resultados são lançados.</small>
   </footer>
 
+  <!-- Modal: palpites de um participante, jogo a jogo -->
+  <div id="modalOverlay" class="modal-overlay" style="display:none">
+    <div class="modal-box">
+      <button type="button" class="modal-close" id="modalClose" aria-label="Fechar">✕</button>
+      <div id="modalContent"></div>
+    </div>
+  </div>
+
   <script type="module">
-    import { isConfigured, onMatches, onBets, onPlayers, onConfig, computeRanking, hasResult, onConnection, forceReconnect, pokeRefresh } from "./js/db.js";
+    import { isConfigured, onMatches, onBets, onPlayers, onConfig, computeRanking, scoreBet, hasResult, onConnection, forceReconnect, pokeRefresh } from "./js/db.js";
     import { flagOf } from "./js/teams.js";
 
     if (!isConfigured) document.getElementById("setup").style.display = "block";
@@ -137,7 +146,7 @@
             </tr></thead>
             <tbody>
             ${ranking.map(r=>`
-              <tr class="rank-row ${r.pos===1?"rank-1":""} ${r.id===myId?"":""}">
+              <tr class="rank-row rank-clickable ${r.pos===1?"rank-1":""}" data-player="${r.id}" tabindex="0" role="button" aria-label="Ver palpites de ${safeName(r.name)}">
                 <td class="rank-pos">${medal(r.pos)||r.pos}</td>
                 <td class="fw-bold">${safeName(r.name)} ${r.id===myId?'<span class="badge bg-warning text-dark ms-1">você</span>':""}</td>
                 <td class="text-center fw-bold text-amarelo fs-5">${r.points}</td>
@@ -169,6 +178,96 @@
             <div class="text-center small muted mt-1">${m.stage||""}${m.group?` • Grupo ${m.group}`:""}</div>
           </div>`).join("");
       }
+
+      wireRankRows();
+    }
+
+    // ===== Modal: palpites de um participante, jogo a jogo =====
+    const overlay = document.getElementById("modalOverlay");
+    const modalContent = document.getElementById("modalContent");
+
+    function wireRankRows() {
+      document.querySelectorAll(".rank-clickable").forEach((row) => {
+        const open = () => openPlayerModal(row.dataset.player);
+        row.onclick = open;
+        row.onkeydown = (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); open(); } };
+      });
+    }
+
+    function closeModal() { overlay.style.display = "none"; modalContent.innerHTML = ""; }
+    document.getElementById("modalClose").onclick = closeModal;
+    overlay.addEventListener("click", (e) => { if (e.target === overlay) closeModal(); });
+    document.addEventListener("keydown", (e) => { if (e.key === "Escape" && overlay.style.display !== "none") closeModal(); });
+
+    const medalOf = (p)=> p===1?"🥇":p===2?"🥈":p===3?"🥉":"";
+
+    // Classifica o palpite de um jogo já finalizado: rótulo + cor da pílula.
+    function classify(pts) {
+      if (pts === scoring.exact)  return { tag: "🎯 Cravada",  cls: "pts-10",  kind: "cravada" };
+      if (pts === scoring.diff)   return { tag: "✅ Acertou (saldo)", cls: "pts-mid", kind: "acerto" };
+      if (pts === scoring.winner) return { tag: "✅ Acertou (vencedor)", cls: "pts-mid", kind: "acerto" };
+      return { tag: "❌ Errou", cls: "pts-0", kind: "erro" };
+    }
+
+    function openPlayerModal(id) {
+      const p = players[id];
+      if (!p || !scoring) return;
+      const row = computeRanking(players, bets, matches, scoring).find(r => r.id === id);
+      const myBets = (bets || {})[id] || {};
+
+      const finished = Object.values(matches)
+        .filter(hasResult)
+        .sort((a,b)=>String(b.datetime||"").localeCompare(String(a.datetime||"")));
+
+      const gameRows = finished.map((m) => {
+        const bet = myBets[m.id];
+        const when = m.datetime
+          ? new Date(m.datetime).toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit"})
+          : "";
+        if (!bet) {
+          return `
+            <div class="pd-row pd-none">
+              <div class="pd-game">
+                <span class="flag">${flagOf(m.home)}</span>
+                <span class="pd-res">${m.homeScore} x ${m.awayScore}</span>
+                <span class="flag">${flagOf(m.away)}</span>
+              </div>
+              <div class="pd-foot">
+                <span class="pd-when">${when}</span>
+                <span class="pd-bet muted">não palpitou</span>
+                <span class="pts-pill pts-0">—</span>
+              </div>
+            </div>`;
+        }
+        const pts = scoreBet(bet, m, scoring);
+        const c = classify(pts);
+        return `
+          <div class="pd-row pd-${c.kind}">
+            <div class="pd-game">
+              <span class="flag">${flagOf(m.home)}</span>
+              <span class="pd-res">${m.homeScore} x ${m.awayScore}</span>
+              <span class="flag">${flagOf(m.away)}</span>
+            </div>
+            <div class="pd-foot">
+              <span class="pd-when">${when}</span>
+              <span class="pd-bet">palpite ${bet.home} x ${bet.away}</span>
+              <span class="pts-pill ${c.cls}">${c.tag} +${pts}</span>
+            </div>
+          </div>`;
+      }).join("");
+
+      modalContent.innerHTML = `
+        <div class="m-stage">${medalOf(row?.pos)} ${row?.pos ? `${row.pos}º lugar` : ""}</div>
+        <div class="pd-name">${safeName(p.name)}</div>
+        <div class="pd-summary">
+          <div class="pd-chip"><b>${row?.points ?? 0}</b><span>pontos</span></div>
+          <div class="pd-chip pd-chip-gold"><b>${row?.exact ?? 0}</b><span>cravadas 🎯</span></div>
+          <div class="pd-chip"><b>${row?.hits ?? 0}</b><span>acertos ✅</span></div>
+          <div class="pd-chip"><b>${row?.played ?? 0}</b><span>palpites</span></div>
+        </div>
+        <div class="m-section-title">Jogo a jogo</div>
+        ${finished.length ? gameRows : `<div class="m-note">Nenhum jogo finalizado ainda.</div>`}`;
+      overlay.style.display = "flex";
     }
   </script>
 </body>
