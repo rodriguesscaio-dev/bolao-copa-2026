@@ -43,7 +43,7 @@ const pt = (n) => (n ? (TEAMS[n] || n) : "A definir");
 
 // ---- ESPN (estatísticas + gols + estádio, grátis e sem chave) ----
 const ESPN = "https://site.api.espn.com/apis/site/v2/sports/soccer/fifa.world";
-const MAX_STATS = 5; // máx. de jogos enriquecidos por chamada (limita latência)
+const MAX_STATS = 8; // máx. de jogos enriquecidos por chamada (limita latência)
 // estatística ESPN -> rótulo PT (ordem do modal). "%" => formata como inteiro%.
 const ESPN_STATS = [
   ["possessionPct", "Posse de bola", "%"],
@@ -72,7 +72,7 @@ function espnGoals(s, homeId) {
   const evs = (s.keyEvents || []).filter((e) => e.scoringPlay || /goal/i.test((e.type && e.type.text) || ""));
   return evs
     .map((e) => {
-      const min = parseInt(String((e.clock && e.clock.displayValue) || "").replace(/[^0-9]/g, ""), 10);
+      const min = parseInt((String((e.clock && e.clock.displayValue) || "").match(/\d+/) || [])[0], 10);
       let player = "—";
       const m = String(e.text || "").match(/\.\s+([^.()]+?)\s+\(/);
       if (m) player = m[1].trim();
@@ -85,7 +85,7 @@ function espnStats(s) {
   const teams = (s.boxscore && s.boxscore.teams) || [];
   const H = teams.find((t) => t.homeAway === "home");
   const A = teams.find((t) => t.homeAway === "away");
-  if (!H || !A) return { stats: [], homeId: null };
+  if (!H || !A) return { stats: [], homeId: null, homeName: null };
   const mapOf = (t) => Object.fromEntries((t.statistics || []).map((x) => [x.name, x.displayValue]));
   const hm = mapOf(H), am = mapOf(A);
   const fmt = (v, suf) => (v == null ? null : suf === "%" ? Math.round(parseFloat(v)) + "%" : String(v));
@@ -94,7 +94,7 @@ function espnStats(s) {
     if (hm[name] != null || am[name] != null)
       stats.push({ label, home: fmt(hm[name], suf) || "-", away: fmt(am[name], suf) || "-" });
   }
-  return { stats, homeId: H.team && H.team.id };
+  return { stats, homeId: H.team && H.team.id, homeName: H.team && H.team.displayName };
 }
 
 module.exports = async (req, res) => {

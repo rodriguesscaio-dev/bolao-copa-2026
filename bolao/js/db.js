@@ -125,16 +125,21 @@ export function forceReconnect() {
 let _lastPoke = 0;
 export function pokeRefresh(matches) {
   const now = Date.now();
-  if (now - _lastPoke < 60000) return;            // no máximo 1x/min por aba
   const arr = Object.values(matches || {});
+  // Tem jogo rolando agora? (do início -10min até +3h depois)
   const inWindow = arr.some((m) => {
     if (!m || !m.datetime) return false;
     const s = new Date(m.datetime).getTime();
     return now >= s - 10 * 60000 && now <= s + 3 * 3600000;
   });
-  if (!inWindow) return;                           // fora de jogo, não cutuca
+  // Tem jogo já finalizado mas ainda sem estatísticas? (atraso a recuperar)
+  const needsStats = arr.some((m) => m && m.finished === true &&
+    !(m.sofa && Array.isArray(m.sofa.stats) && m.sofa.stats.length));
+  if (!inWindow && !needsStats) return;            // nada a fazer, não cutuca
+  const minGap = inWindow ? 60000 : 5 * 60000;     // jogo ao vivo 1x/min; só completar stats 1x/5min
+  if (now - _lastPoke < minGap) return;
   _lastPoke = now;
-  fetch("/api/refresh").catch(() => {});           // fire-and-forget
+  fetch("/api/refresh").catch(() => {});           // fire-and-forget (trava global de 60s no servidor)
 }
 
 // =====================================================================
