@@ -361,6 +361,35 @@ a { color: var(--accent); text-underline-offset: 3px; }
 .pd-bet { font-size: .82rem; font-weight: 700; flex: 1; text-align: center; }
 .pd-foot .pts-pill { font-size: .72rem; white-space: nowrap; }
 
+/* ============================================================
+   Próxima fase / Chaveamento (16-avos)
+   ============================================================ */
+.ko-intro { background: var(--surface); border: var(--bw) solid var(--accent);
+  padding: 1rem 1.2rem; margin-bottom: 1.2rem; }
+.ko-card { background: var(--surface); border: var(--bw) solid var(--line);
+  padding: .8rem 1rem; margin-bottom: .6rem; transition: border-color .12s; }
+.ko-card:hover { border-color: var(--accent); }
+.ko-card.ko-brasil { border-color: var(--ac-lime); box-shadow: var(--shadow-sticker); }
+.ko-head { display: flex; justify-content: space-between; align-items: baseline;
+  gap: .5rem; flex-wrap: wrap; margin-bottom: .7rem; }
+.ko-jogo { font-weight: 800; color: var(--accent); font-size: .7rem;
+  text-transform: uppercase; letter-spacing: .12em; }
+.ko-when { color: var(--fg-muted); font-size: .8rem; font-weight: 700; }
+.ko-venue { color: var(--fg-muted); font-size: .74rem; width: 100%; }
+.ko-body { display: grid; grid-template-columns: 1fr auto 1fr; align-items: start; gap: .6rem; }
+.ko-slot { min-width: 0; }
+.ko-slot.away { text-align: right; }
+.ko-team { display: flex; align-items: center; gap: .5rem; font-weight: 800; font-size: 1.04rem; }
+.ko-slot.away .ko-team { flex-direction: row-reverse; }
+.ko-src { font-weight: 800; font-size: .96rem; line-height: 1.15; }
+.ko-sub { color: var(--fg-muted); font-size: .77rem; margin-top: .18rem;
+  display: flex; align-items: center; gap: .35rem; }
+.ko-slot.away .ko-sub { flex-direction: row-reverse; }
+.ko-sub .flag-img { width: 20px; height: 15px; }
+.ko-ok { color: var(--accent-3); font-weight: 800; }
+.ko-vs { color: var(--accent); font-weight: 800; font-size: 1.05rem; padding-top: .1rem; }
+.ko-thirds { color: var(--fg-muted); font-size: .72rem; margin-top: .18rem; font-style: italic; }
+
 /* ---- Resultados: card clicável + palpites de todos no jogo ---- */
 .match-clickable { cursor: pointer; }
 .match-clickable:focus-visible { outline: none; border-color: var(--accent); }
