@@ -32,7 +32,15 @@
 
     <h3 class="fw-bold mb-1">🏆 Ranking do Bolão</h3>
     <p class="muted mb-1" id="progress">—</p>
-    <p class="mb-0"><span id="connStatus" style="font-size:.8rem;font-weight:600;color:#22c55e">🟢 ao vivo</span></p>
+    <p class="mb-2"><span id="connStatus" style="font-size:.8rem;font-weight:600;color:#22c55e">🟢 ao vivo</span></p>
+
+    <div class="d-flex flex-wrap align-items-center gap-2 mb-1">
+      <div class="view-toggle" id="rankToggle">
+        <button type="button" class="vt-btn" data-rank="geral">Geral</button>
+        <button type="button" class="vt-btn" data-rank="mata">Ranking Mauricio</button>
+      </div>
+      <span class="muted small" id="rankHint"></span>
+    </div>
 
     <div id="winner"></div>
 
@@ -47,8 +55,10 @@
         <li class="mb-2"><strong class="text-amarelo" id="p-exact">10</strong> pts — cravou o placar exato</li>
         <li class="mb-2"><strong class="text-amarelo" id="p-diff">7</strong> pts — acertou o vencedor <em>e</em> o saldo de gols</li>
         <li class="mb-2"><strong class="text-amarelo" id="p-winner">5</strong> pts — acertou só quem venceu (ou o empate)</li>
-        <li class="mb-0"><strong class="text-amarelo">0</strong> pts — errou o resultado</li>
+        <li class="mb-2"><strong class="text-amarelo">0</strong> pts — errou o resultado</li>
+        <li class="mb-0"><strong class="text-amarelo">+<span id="p-pen">2</span></strong> pts — <strong>mata-mata:</strong> palpitou empate e acertou quem avança nos pênaltis</li>
       </ul>
+      <p class="muted small mb-0 mt-3">🥅 No mata-mata, os pênaltis <strong>não</strong> contam pro placar: vale o resultado no fim da prorrogação (empate). Quem vai pra pênaltis define só o bônus de quem avança.</p>
     </div>
 
     <h4 class="fw-bold mt-5 mb-3">📋 Resultados dos jogos</h4>
@@ -68,7 +78,7 @@
   </div>
 
   <script type="module">
-    import { isConfigured, onMatches, onBets, onPlayers, onConfig, computeRanking, scoreBet, hasResult, onConnection, forceReconnect, pokeRefresh } from "./js/db.js";
+    import { isConfigured, onMatches, onBets, onPlayers, onConfig, computeRanking, scoreBet, hasResult, onConnection, forceReconnect, pokeRefresh, isKnockout, wentToPenalties } from "./js/db.js";
     import { flagOf } from "./js/teams.js";
 
     if (!isConfigured) document.getElementById("setup").style.display = "block";
@@ -85,7 +95,7 @@
     onConfig((s)=>{
       scoring=s;
       const set=(id,v)=>{const el=document.getElementById(id); if(el) el.textContent=v;};
-      set("p-exact", s.exact); set("p-diff", s.diff); set("p-winner", s.winner);
+      set("p-exact", s.exact); set("p-diff", s.diff); set("p-winner", s.winner); set("p-pen", s.penBonus ?? 2);
       render();
     });
     onMatches((m)=>{matches=m||{};render();pokeRefresh(matches);});
@@ -107,16 +117,37 @@
 
     const myId = localStorage.getItem("bolao_id");
 
+    // ---- Visualização do ranking: Geral (tudo) ou "Ranking Mauricio" (só mata-mata) ----
+    let rankView = localStorage.getItem("bolao_rank_view") || "geral";
+    function matchesForView() {
+      if (rankView !== "mata") return matches;
+      const f = {};
+      for (const [k, m] of Object.entries(matches)) if (isKnockout(m)) f[k] = m;
+      return f;
+    }
+    const rankToggle = document.getElementById("rankToggle");
+    function syncRankToggle() {
+      rankToggle.querySelectorAll(".vt-btn").forEach(b => b.classList.toggle("active", b.dataset.rank === rankView));
+      document.getElementById("rankHint").textContent = rankView === "mata"
+        ? "🏟️ Só o mata-mata (16-avos → final). Todo mundo começa do zero aqui."
+        : "Todos os jogos da Copa.";
+    }
+    rankToggle.querySelectorAll(".vt-btn").forEach(b => {
+      b.onclick = () => { rankView = b.dataset.rank; localStorage.setItem("bolao_rank_view", rankView); syncRankToggle(); render(); };
+    });
+    syncRankToggle();
+
     function render() {
       if (!scoring) return;
-      const matchArr = Object.values(matches);
+      const vMatches = matchesForView();
+      const matchArr = Object.values(vMatches);
       const finished = matchArr.filter(hasResult);
       const allDone = matchArr.length > 0 && finished.length === matchArr.length;
 
       document.getElementById("progress").textContent =
-        `${finished.length} de ${matchArr.length} jogos finalizados • ${Object.keys(players).length} participantes`;
+        `${finished.length} de ${matchArr.length} jogos ${rankView === "mata" ? "do mata-mata " : ""}finalizados • ${Object.keys(players).length} participantes`;
 
-      const ranking = computeRanking(players, bets, matches, scoring);
+      const ranking = computeRanking(players, bets, vMatches, scoring);
 
       // ----- Vencedor -----
       const winnerEl = document.getElementById("winner");
@@ -124,7 +155,7 @@
         const champs = ranking.filter(r => r.pos === 1);
         winnerEl.innerHTML = `
           <div class="winner-banner mt-3">
-            <div>🏆 CAMPEÃO DO BOLÃO 🏆</div>
+            <div>🏆 ${rankView === "mata" ? "CAMPEÃO DO MATA-MATA" : "CAMPEÃO DO BOLÃO"} 🏆</div>
             <div class="who">${champs.map(c=>safeName(c.name)).join(" & ")}</div>
             <div>${champs[0].points} pontos • ${champs[0].exact} placares cravados</div>
           </div>`;
@@ -176,6 +207,7 @@
               </div>
             </div>
             <div class="confirm-tag text-center mt-1">✅ Resultado confirmado</div>
+            ${wentToPenalties(m) ? `<div class="pen-result text-center mt-1">🥅 ${m.pen.winner==="home"?m.home:m.away} venceu nos pênaltis (${m.pen.home} x ${m.pen.away})</div>` : ""}
             <div class="text-center small muted mt-1">${m.stage||""}${m.group?` • Grupo ${m.group}`:""}</div>
             <div class="text-center small text-amarelo mt-1">👉 ver palpites de todos</div>
           </div>`).join("");
@@ -212,21 +244,31 @@
 
     const medalOf = (p)=> p===1?"🥇":p===2?"🥈":p===3?"🥉":"";
 
-    // Classifica o palpite de um jogo já finalizado: rótulo + cor da pílula.
-    function classify(pts) {
-      if (pts === scoring.exact)  return { tag: "🎯 Cravada",  cls: "pts-10",  kind: "cravada" };
-      if (pts === scoring.diff)   return { tag: "✅ Acertou (saldo)", cls: "pts-mid", kind: "acerto" };
-      if (pts === scoring.winner) return { tag: "✅ Acertou (vencedor)", cls: "pts-mid", kind: "acerto" };
-      return { tag: "❌ Errou", cls: "pts-0", kind: "erro" };
+    // Classifica o palpite de um jogo já finalizado: rótulo + cor + total (com
+    // bônus de pênaltis) + se acertou quem avança. Compara o placar direto, então
+    // não confunde uma cravada+bônus (12 pts) com "errou".
+    const sgn = (a,b) => a>b?1:a<b?-1:0;
+    function classify(bet, m) {
+      const rh = Number(m.homeScore), ra = Number(m.awayScore);
+      const bh = Number(bet.home), ba = Number(bet.away);
+      const total = scoreBet(bet, m, scoring);
+      let base;
+      if (bh === rh && ba === ra) base = { tag: "🎯 Cravada", cls: "pts-10", kind: "cravada" };
+      else if (sgn(bh,ba) !== sgn(rh,ra)) base = { tag: "❌ Errou", cls: "pts-0", kind: "erro" };
+      else if (bh - ba === rh - ra) base = { tag: "✅ Acertou (saldo)", cls: "pts-mid", kind: "acerto" };
+      else base = { tag: "✅ Acertou (vencedor)", cls: "pts-mid", kind: "acerto" };
+      const penOk = wentToPenalties(m) && bh === ba && bet.pen === m.pen.winner;
+      return { ...base, total, penOk };
     }
 
     function openPlayerModal(id) {
       const p = players[id];
       if (!p || !scoring) return;
-      const row = computeRanking(players, bets, matches, scoring).find(r => r.id === id);
+      const vMatches = matchesForView();
+      const row = computeRanking(players, bets, vMatches, scoring).find(r => r.id === id);
       const myBets = (bets || {})[id] || {};
 
-      const finished = Object.values(matches)
+      const finished = Object.values(vMatches)
         .filter(hasResult)
         .sort((a,b)=>String(b.datetime||"").localeCompare(String(a.datetime||"")));
 
@@ -250,8 +292,8 @@
               </div>
             </div>`;
         }
-        const pts = scoreBet(bet, m, scoring);
-        const c = classify(pts);
+        const c = classify(bet, m);
+        const penTxt = (bet.pen && isKnockout(m)) ? ` · pên: ${bet.pen === "home" ? m.home : m.away}` : "";
         return `
           <div class="pd-row pd-${c.kind}">
             <div class="pd-game">
@@ -261,8 +303,8 @@
             </div>
             <div class="pd-foot">
               <span class="pd-when">${when}</span>
-              <span class="pd-bet">palpite ${bet.home} x ${bet.away}</span>
-              <span class="pts-pill ${c.cls}">${c.tag} +${pts}</span>
+              <span class="pd-bet">palpite ${bet.home} x ${bet.away}${penTxt}</span>
+              <span class="pts-pill ${c.cls}">${c.tag}${c.penOk ? " 🥅" : ""} +${c.total}</span>
             </div>
           </div>`;
       }).join("");
@@ -293,22 +335,21 @@
       const list = Object.entries(players || {}).map(([id, p]) => {
         const bet = (bets || {})[id]?.[matchId];
         if (!bet) return null;
-        const pts = scoreBet(bet, m, scoring);
-        return { name: safeName(p.name), home: bet.home, away: bet.away, pts, c: classify(pts) };
+        return { name: safeName(p.name), home: bet.home, away: bet.away, pen: bet.pen, c: classify(bet, m) };
       }).filter(Boolean);
 
       // ordena: mais pontos primeiro, depois nome
-      list.sort((a,b)=> b.pts - a.pts || a.name.localeCompare(b.name));
+      list.sort((a,b)=> b.c.total - a.c.total || a.name.localeCompare(b.name));
 
       const nCravadas = list.filter(x => x.c.kind === "cravada").length;
-      const nAcertos  = list.filter(x => x.pts > 0).length;
+      const nAcertos  = list.filter(x => x.c.total > 0).length;
       const semPalpite = Object.keys(players || {}).length - list.length;
 
       const peopleRows = list.map((x) => `
         <div class="pp-row pd-${x.c.kind}">
           <span class="pp-name">${x.name}</span>
-          <span class="pp-bet">${x.home} x ${x.away}</span>
-          <span class="pts-pill ${x.c.cls}">${x.c.tag} +${x.pts}</span>
+          <span class="pp-bet">${x.home} x ${x.away}${x.pen && isKnockout(m) ? ` · pên ${x.pen === "home" ? m.home : m.away}` : ""}</span>
+          <span class="pts-pill ${x.c.cls}">${x.c.tag}${x.c.penOk ? " 🥅" : ""} +${x.c.total}</span>
         </div>`).join("");
 
       modalContent.innerHTML = `
@@ -318,6 +359,7 @@
           <span class="m-score">${m.homeScore} <span class="m-vs">x</span> ${m.awayScore}</span>
           <div class="m-team"><span class="flag">${flagOf(m.away)}</span><span class="nm">${m.away}</span></div>
         </div>
+        ${wentToPenalties(m) ? `<div class="m-pen">🥅 ${m.pen.winner==="home"?m.home:m.away} venceu nos pênaltis (${m.pen.home} x ${m.pen.away})</div>` : ""}
         <div class="pd-summary">
           <div class="pd-chip"><b>${list.length}</b><span>palpitaram</span></div>
           <div class="pd-chip pd-chip-gold"><b>${nCravadas}</b><span>cravaram 🎯</span></div>

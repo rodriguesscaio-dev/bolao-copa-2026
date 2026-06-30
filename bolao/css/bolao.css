@@ -270,6 +270,30 @@ a { color: var(--accent); text-underline-offset: 3px; }
 .details-btn:hover { background: var(--accent); color: var(--ac-black); border-color: var(--ac-black); }
 
 /* ============================================================
+   Pênaltis no mata-mata (palpite de empate → quem avança)
+   ============================================================ */
+.pen-pick {
+  display: flex; flex-direction: column; align-items: center; gap: .5rem;
+  margin-top: .7rem; padding: .6rem .7rem;
+  border: var(--bw) dashed var(--ac-lime);
+  background: color-mix(in oklab, var(--ac-lime), transparent 92%);
+}
+.pen-q { font-weight: 700; font-size: .82rem; color: var(--ac-lime); text-align: center; }
+.pen-opts { display: flex; gap: .5rem; flex-wrap: wrap; justify-content: center; }
+.pen-btn {
+  display: inline-flex; align-items: center; gap: .35rem;
+  background: var(--ac-black); color: var(--fg);
+  border: var(--bw) solid var(--line); border-radius: var(--r-pill);
+  font-family: var(--font); font-weight: 700; font-size: .85rem;
+  padding: .3rem .9rem; cursor: pointer; transition: all .12s;
+}
+.pen-btn .flag-img { width: 22px; height: 16px; }
+.pen-btn:hover { border-color: var(--ac-lime); }
+.pen-btn.active { background: var(--ac-lime); color: var(--ac-black); border-color: var(--ac-black); }
+.pen-result { color: var(--ac-lime); font-weight: 700; font-size: .8rem; }
+.m-pen { text-align: center; color: var(--ac-lime); font-weight: 700; font-size: .85rem; margin: .2rem 0 .5rem; }
+
+/* ============================================================
    Modal de detalhes do jogo (SofaScore)
    ============================================================ */
 .modal-overlay {

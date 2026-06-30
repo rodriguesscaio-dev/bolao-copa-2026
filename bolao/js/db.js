@@ -60,10 +60,19 @@ export const savePlayerProfile = (uid, name, email) =>
 
 // ---- Pontuação padrão (pode ser alterada no admin) -------------------
 export const DEFAULT_SCORING = {
-  exact:  10, // cravou o placar exato
-  diff:    7, // acertou vencedor/empate E a diferença de gols (saldo)
-  winner:  5  // acertou só quem venceu (ou que foi empate)
+  exact:   10, // cravou o placar exato
+  diff:     7, // acertou vencedor/empate E a diferença de gols (saldo)
+  winner:   5, // acertou só quem venceu (ou que foi empate)
+  penBonus: 2  // mata-mata: palpitou empate E acertou quem avança nos pênaltis
 };
+
+// Fases de mata-mata (a partir dos 16-avos). Usado para o palpite de pênaltis
+// e para o "Ranking Mauricio" (ranking só do mata-mata).
+export const KNOCKOUT_STAGES = [
+  "16-avos de Final", "Oitavas de Final", "Quartas de Final",
+  "Semifinal", "Disputa de 3º", "Final"
+];
+export const isKnockout = (m) => !!m && KNOCKOUT_STAGES.includes(m.stage);
 
 // =====================================================================
 //  Helpers
@@ -145,9 +154,13 @@ export function pokeRefresh(matches) {
 // =====================================================================
 //  Escritas
 // =====================================================================
-export const saveBet = (playerId, matchId, home, away) =>
+// pen = "home" | "away" | null — quem o jogador acha que avança nos pênaltis
+// (só faz sentido em jogo de mata-mata com palpite de empate).
+export const saveBet = (playerId, matchId, home, away, pen = null) =>
   set(ref(db, `bets/${playerId}/${matchId}`), {
-    home: Number(home), away: Number(away), at: Date.now()
+    home: Number(home), away: Number(away),
+    pen: (pen === "home" || pen === "away") ? pen : null,
+    at: Date.now()
   });
 
 export const addMatch = (match) => {
@@ -184,6 +197,15 @@ export function hasResult(match) {
     && Number.isFinite(Number(match.awayScore));
 }
 
+// Um jogo de mata-mata foi decidido nos pênaltis? (resultado = empate + houve
+// disputa de pênaltis registrada). Os pênaltis NÃO entram no placar (homeScore/
+// awayScore já é o empate); ficam só em match.pen para exibir quem avançou.
+export function wentToPenalties(match) {
+  return !!match && !!match.pen
+    && (match.pen.winner === "home" || match.pen.winner === "away")
+    && Number(match.homeScore) === Number(match.awayScore);
+}
+
 // Quantos pontos um palpite vale contra um jogo já finalizado.
 export function scoreBet(bet, match, scoring = DEFAULT_SCORING) {
   if (!bet || !hasResult(match)) return 0;
@@ -191,10 +213,19 @@ export function scoreBet(bet, match, scoring = DEFAULT_SCORING) {
   const rh = Number(match.homeScore), ra = Number(match.awayScore);
   if ([bh, ba, rh, ra].some((n) => Number.isNaN(n))) return 0;
 
-  if (bh === rh && ba === ra) return scoring.exact;            // cravou
-  if (sign(bh, ba) !== sign(rh, ra)) return 0;                 // errou o resultado
-  if (bh - ba === rh - ra) return scoring.diff;                // acertou resultado + saldo
-  return scoring.winner;                                        // acertou só o resultado
+  let pts;
+  if (bh === rh && ba === ra) pts = scoring.exact;              // cravou
+  else if (sign(bh, ba) !== sign(rh, ra)) pts = 0;             // errou o resultado
+  else if (bh - ba === rh - ra) pts = scoring.diff;            // acertou resultado + saldo
+  else pts = scoring.winner;                                    // acertou só o resultado
+
+  // Bônus de pênaltis: foi decidido nos pênaltis, você palpitou EMPATE
+  // (logo já acertou o resultado) e cravou quem avança.
+  const penBonus = Number(scoring.penBonus ?? DEFAULT_SCORING.penBonus) || 0;
+  if (penBonus && bh === ba && wentToPenalties(match) && bet.pen === match.pen.winner) {
+    pts += penBonus;
+  }
+  return pts;
 }
 
 // Monta o ranking completo. Retorna lista ordenada com estatísticas.
@@ -212,7 +243,8 @@ export function computeRanking(players, bets, matches, scoring = DEFAULT_SCORING
       played++;
       const pts = scoreBet(bet, m, scoring);
       points += pts;
-      if (pts === scoring.exact) exact++;
+      // cravada = placar exato (independe do bônus de pênaltis somado em pts)
+      if (Number(bet.home) === Number(m.homeScore) && Number(bet.away) === Number(m.awayScore)) exact++;
       if (pts > 0) hits++;
     });
 

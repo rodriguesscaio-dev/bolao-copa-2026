@@ -73,7 +73,8 @@
           <div class="col-md-3"><input id="m-dt" type="datetime-local" class="form-control"></div>
           <div class="col-md-2">
             <select id="m-stage" class="form-select">
-              <option>Fase de Grupos</option><option>Oitavas de Final</option>
+              <option>Fase de Grupos</option><option>16-avos de Final</option>
+              <option>Oitavas de Final</option>
               <option>Quartas de Final</option><option>Semifinal</option>
               <option>Disputa de 3º</option><option>Final</option>
             </select>
@@ -213,7 +214,7 @@ México x Polônia | 2026-06-13 19:00 | Fase de Grupos | A"></textarea>
     // ---- Lista de jogos ----
     let matches={};
     onMatches((m)=>{matches=m||{};renderList();});
-    const STAGE=["Fase de Grupos","Oitavas de Final","Quartas de Final","Semifinal","Disputa de 3º","Final"];
+    const STAGE=["Fase de Grupos","16-avos de Final","Oitavas de Final","Quartas de Final","Semifinal","Disputa de 3º","Final"];
 
     function renderList(){
       const el=document.getElementById("adminlist");

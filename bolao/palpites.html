@@ -78,7 +78,7 @@
 
   <script type="module">
     import {
-      isConfigured, onAuth, logOut, onMatches, onBets, onConfig, saveBet, scoreBet, savePlayerProfile, hasResult, pokeRefresh
+      isConfigured, onAuth, logOut, onMatches, onBets, onConfig, saveBet, scoreBet, savePlayerProfile, hasResult, pokeRefresh, isKnockout, wentToPenalties
     } from "./js/db.js";
     import { flagOf } from "./js/teams.js";
 
@@ -164,7 +164,7 @@
     onConfig((s) => { scoring = s; render(); });
     onMatches((m) => { matches = m || {}; render(); pokeRefresh(matches); });
 
-    const STAGE_ORDER = ["Fase de Grupos","Oitavas de Final","Quartas de Final","Semifinal","Disputa de 3º","Final"];
+    const STAGE_ORDER = ["Fase de Grupos","16-avos de Final","Oitavas de Final","Quartas de Final","Semifinal","Disputa de 3º","Final"];
     function stageRank(s){ const i = STAGE_ORDER.indexOf(s); return i < 0 ? 99 : i; }
 
     const isDefined = (m) => m.home && m.away && m.home !== "A definir" && m.away !== "A definir";
@@ -180,13 +180,39 @@
       const pts = (done && bet) ? scoreBet(bet, m, scoring) : null;
       if (pts != null) total += pts;
 
+      const koGame = isKnockout(m);
+      const wonPens = done && wentToPenalties(m);
+      const penWinnerName = wonPens ? (m.pen.winner === "home" ? m.home : m.away) : "";
+      const isExactBet = done && bet && Number(bet.home) === Number(m.homeScore) && Number(bet.away) === Number(m.awayScore);
+      const betIsDraw = bet && bet.home != null && bet.away != null && Number(bet.home) === Number(bet.away);
+
       const when = m.datetime
         ? new Date(m.datetime).toLocaleString("pt-BR",{day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"})
         : "";
       const ptsPill = pts == null ? "" :
-        `<span class="pts-pill ${pts===scoring.exact?"pts-10":pts>0?"pts-mid":"pts-0"}">+${pts}</span>`;
+        `<span class="pts-pill ${isExactBet?"pts-10":pts>0?"pts-mid":"pts-0"}">+${pts}</span>`;
       const resultPill = done
         ? `<span class="result-pill ms-2">Final ${m.homeScore} x ${m.awayScore}</span>` : "";
+
+      // Seletor de pênaltis (mata-mata, jogo aberto): aparece quando o palpite é empate.
+      const penPickHtml = (koGame && !locked) ? `
+        <div class="pen-pick" data-pen-m="${m.id}" style="display:${betIsDraw ? "flex" : "none"}">
+          <span class="pen-q">⚖️ Empate no mata-mata: quem avança nos pênaltis?</span>
+          <div class="pen-opts">
+            <button type="button" class="pen-btn ${bet?.pen==="home"?"active":""}" data-pen-m="${m.id}" data-pen="home"><span class="flag">${flagOf(m.home)}</span> ${m.home}</button>
+            <button type="button" class="pen-btn ${bet?.pen==="away"?"active":""}" data-pen-m="${m.id}" data-pen="away"><span class="flag">${flagOf(m.away)}</span> ${m.away}</button>
+          </div>
+        </div>` : "";
+
+      // Quem avançou nos pênaltis (jogo encerrado) + se o jogador acertou.
+      const penResultHtml = wonPens ? `
+        <div class="pen-result mt-2">🥅 ${penWinnerName} venceu nos pênaltis (${m.pen.home} x ${m.pen.away})${
+          betIsDraw
+            ? (bet.pen === m.pen.winner
+                ? ` · <span class="ko-ok">você cravou quem avança (+${scoring.penBonus||0})</span>`
+                : (bet.pen ? ` · <span class="lock-tag">você apostou ${bet.pen==="home"?m.home:m.away}</span>` : ""))
+            : ""
+        }</div>` : "";
       // Linha de status: prazo para palpitar / encerrado / aguardando placar / resultado confirmado
       const statusTag = done
         ? `<div class="confirm-tag mt-1">✅ Resultado confirmado</div>`
@@ -218,6 +244,8 @@
             <span class="flag">${flagOf(m.away)}</span><span class="text-truncate">${m.away}</span>
           </div>
         </div>
+        ${penPickHtml}
+        ${penResultHtml}
         ${locked && !bet ? `<div class="text-center small text-warning mt-1">Você não palpitou neste jogo.</div>`:""}
         <div class="text-center mt-2">
           <button type="button" class="details-btn" data-details="${m.id}">
@@ -305,35 +333,74 @@
       list.innerHTML = viewMode === "data" ? renderByDate(arr) : renderByGroup(arr);
       document.getElementById("mypts").textContent = total;
       wireInputs();
+      wirePenButtons();
       wireDetails();
     }
 
     let timers = {};
+    const setBar = (msg, revert = true) => {
+      const bar = document.getElementById("savebar");
+      bar.textContent = msg;
+      if (revert) setTimeout(() => bar.textContent = "💾 Os palpites salvam sozinhos ao digitar.", 1500);
+    };
+
+    const scoreEls = (id) => ({
+      home: document.querySelector(`.score-input[data-m="${id}"][data-s="home"]`)?.value ?? "",
+      away: document.querySelector(`.score-input[data-m="${id}"][data-s="away"]`)?.value ?? "",
+    });
+
+    async function persistBet(id, home, away, pen) {
+      // trava de prazo: não salva se o jogo já começou (ou acabou)
+      const m = matches[id];
+      const start = m && m.datetime ? new Date(m.datetime).getTime() : null;
+      if (m && (m.finished || (start && Date.now() >= start))) {
+        setBar("🔒 Palpites encerrados para este jogo.", false);
+        render();
+        return;
+      }
+      try {
+        await saveBet(playerId, id, home, away, pen);
+        setBar("✅ Palpite salvo!");
+      } catch (e) { setBar("❌ Erro ao salvar. Cheque a conexão.", false); }
+    }
+
+    // Salva respeitando a regra do mata-mata: palpite de EMPATE exige escolher
+    // quem avança nos pênaltis (obrigatório).
+    function attemptSave(id) {
+      const { home, away } = scoreEls(id);
+      if (home === "" || away === "") return;
+      const m = matches[id];
+      const draw = Number(home) === Number(away);
+      const penRow = document.querySelector(`.pen-pick[data-pen-m="${id}"]`);
+      if (isKnockout(m) && draw) {
+        if (penRow) penRow.style.display = "flex";
+        const active = penRow ? penRow.querySelector(".pen-btn.active") : null;
+        if (!active) { setBar("⚖️ Empate no mata-mata: escolha quem avança nos pênaltis para salvar.", false); return; }
+        persistBet(id, home, away, active.dataset.pen);
+      } else {
+        if (penRow) penRow.style.display = "none";
+        persistBet(id, home, away, null);
+      }
+    }
+
     function wireInputs() {
       document.querySelectorAll(".score-input").forEach(inp => {
         inp.addEventListener("input", () => {
           const id = inp.dataset.m;
-          const home = document.querySelector(`.score-input[data-m="${id}"][data-s="home"]`).value;
-          const away = document.querySelector(`.score-input[data-m="${id}"][data-s="away"]`).value;
-          if (home === "" || away === "") return;
           clearTimeout(timers[id]);
-          timers[id] = setTimeout(async () => {
-            const bar = document.getElementById("savebar");
-            // trava de prazo: não salva se o jogo já começou (ou acabou)
-            const m = matches[id];
-            const start = m && m.datetime ? new Date(m.datetime).getTime() : null;
-            if (m && (m.finished || (start && Date.now() >= start))) {
-              bar.textContent = "🔒 Palpites encerrados para este jogo.";
-              render();
-              return;
-            }
-            try {
-              await saveBet(playerId, id, home, away);
-              bar.textContent = "✅ Palpite salvo!";
-              setTimeout(() => bar.textContent = "💾 Os palpites salvam sozinhos ao digitar.", 1500);
-            } catch (e) { bar.textContent = "❌ Erro ao salvar. Cheque a conexão."; }
-          }, 500);
+          timers[id] = setTimeout(() => attemptSave(id), 500);
         });
+      });
+    }
+
+    // Botões "quem avança nos pênaltis": marca o escolhido e salva na hora.
+    function wirePenButtons() {
+      document.querySelectorAll(".pen-btn").forEach(btn => {
+        btn.onclick = () => {
+          const id = btn.dataset.penM;
+          document.querySelectorAll(`.pen-btn[data-pen-m="${id}"]`).forEach(b => b.classList.toggle("active", b === btn));
+          attemptSave(id);
+        };
       });
     }
 
@@ -396,10 +463,15 @@
 
       const bet = myBets[id];
       const pts = (done && bet) ? scoreBet(bet, m, scoring) : null;
+      const betPen = (bet && bet.pen && isKnockout(m)) ? ` · pênaltis: ${bet.pen === "home" ? m.home : m.away}` : "";
+      const betExact = done && bet && Number(bet.home) === Number(m.homeScore) && Number(bet.away) === Number(m.awayScore);
       const betBlock = bet
-        ? `<div class="m-bet">Seu palpite: ${bet.home} x ${bet.away}
-             ${pts != null ? `<span class="pts-pill ${pts===scoring.exact?"pts-10":pts>0?"pts-mid":"pts-0"}">+${pts}</span>` : ""}</div>`
+        ? `<div class="m-bet">Seu palpite: ${bet.home} x ${bet.away}${betPen}
+             ${pts != null ? `<span class="pts-pill ${betExact?"pts-10":pts>0?"pts-mid":"pts-0"}">+${pts}</span>` : ""}</div>`
         : (done ? `<div class="m-bet muted">Você não palpitou neste jogo.</div>` : "");
+      const penInfo = (done && wentToPenalties(m))
+        ? `<div class="m-pen">🥅 ${m.pen.winner === "home" ? m.home : m.away} venceu nos pênaltis (${m.pen.home} x ${m.pen.away})</div>`
+        : "";
 
       let body = "";
       if (done && (sofa.stats?.length || sofa.goals?.length)) {
@@ -425,6 +497,7 @@
         <div class="m-meta">
           <span>🗓️ ${when}</span>${sofa.venue ? `<span>📍 ${sofa.venue}</span>` : ""}
         </div>
+        ${penInfo}
         ${betBlock}
         ${body}
         <div class="m-note" style="font-size:.72rem;margin-top:1rem">Dados: ESPN</div>`;
