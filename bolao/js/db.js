@@ -219,13 +219,26 @@ export function scoreBet(bet, match, scoring = DEFAULT_SCORING) {
   else if (bh - ba === rh - ra) pts = scoring.diff;            // acertou resultado + saldo
   else pts = scoring.winner;                                    // acertou só o resultado
 
-  // Bônus de pênaltis: foi decidido nos pênaltis, você palpitou EMPATE
-  // (logo já acertou o resultado) e cravou quem avança.
+  // Bônus de "quem avança nos pênaltis": jogo decidido nos pênaltis e o jogador
+  // indicou o time certo. A indicação vem do pick explícito (palpite de empate
+  // com o seletor) OU de ter apostado na vitória do time que acabou avançando
+  // (cobre os palpites de antes do seletor existir, ex.: apostou Marrocos vencer).
   const penBonus = Number(scoring.penBonus ?? DEFAULT_SCORING.penBonus) || 0;
-  if (penBonus && bh === ba && wentToPenalties(match) && bet.pen === match.pen.winner) {
-    pts += penBonus;
+  if (penBonus && wentToPenalties(match)) {
+    const advances = predictedAdvancer(bet);
+    if (advances && advances === match.pen.winner) pts += penBonus;
   }
   return pts;
+}
+
+// Quem o jogador acha que avança: vencedor do palpite (vitória) ou, no empate,
+// o pick explícito de pênaltis (bet.pen). null = não indicou ninguém.
+export function predictedAdvancer(bet) {
+  if (!bet) return null;
+  const bh = Number(bet.home), ba = Number(bet.away);
+  if (bh > ba) return "home";
+  if (ba > bh) return "away";
+  return (bet.pen === "home" || bet.pen === "away") ? bet.pen : null;
 }
 
 // Monta o ranking completo. Retorna lista ordenada com estatísticas.

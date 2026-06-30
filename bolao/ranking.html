@@ -37,7 +37,7 @@
     <div class="d-flex flex-wrap align-items-center gap-2 mb-1">
       <div class="view-toggle" id="rankToggle">
         <button type="button" class="vt-btn" data-rank="geral">Geral</button>
-        <button type="button" class="vt-btn" data-rank="mata">Ranking Mauricio</button>
+        <button type="button" class="vt-btn" data-rank="mata">Ranking Mata-Mata (Maurício)</button>
       </div>
       <span class="muted small" id="rankHint"></span>
     </div>
@@ -56,7 +56,7 @@
         <li class="mb-2"><strong class="text-amarelo" id="p-diff">7</strong> pts — acertou o vencedor <em>e</em> o saldo de gols</li>
         <li class="mb-2"><strong class="text-amarelo" id="p-winner">5</strong> pts — acertou só quem venceu (ou o empate)</li>
         <li class="mb-2"><strong class="text-amarelo">0</strong> pts — errou o resultado</li>
-        <li class="mb-0"><strong class="text-amarelo">+<span id="p-pen">2</span></strong> pts — <strong>mata-mata:</strong> palpitou empate e acertou quem avança nos pênaltis</li>
+        <li class="mb-0"><strong class="text-amarelo">+<span id="p-pen">2</span></strong> pts — <strong>mata-mata:</strong> acertou quem avança nos pênaltis (seja apostando na vitória do time, seja cravando o empate e escolhendo quem passa)</li>
       </ul>
       <p class="muted small mb-0 mt-3">🥅 No mata-mata, os pênaltis <strong>não</strong> contam pro placar: vale o resultado no fim da prorrogação (empate). Quem vai pra pênaltis define só o bônus de quem avança.</p>
     </div>
@@ -78,7 +78,7 @@
   </div>
 
   <script type="module">
-    import { isConfigured, onMatches, onBets, onPlayers, onConfig, computeRanking, scoreBet, hasResult, onConnection, forceReconnect, pokeRefresh, isKnockout, wentToPenalties } from "./js/db.js";
+    import { isConfigured, onMatches, onBets, onPlayers, onConfig, computeRanking, scoreBet, hasResult, onConnection, forceReconnect, pokeRefresh, isKnockout, wentToPenalties, predictedAdvancer } from "./js/db.js";
     import { flagOf } from "./js/teams.js";
 
     if (!isConfigured) document.getElementById("setup").style.display = "block";
@@ -257,7 +257,7 @@
       else if (sgn(bh,ba) !== sgn(rh,ra)) base = { tag: "❌ Errou", cls: "pts-0", kind: "erro" };
       else if (bh - ba === rh - ra) base = { tag: "✅ Acertou (saldo)", cls: "pts-mid", kind: "acerto" };
       else base = { tag: "✅ Acertou (vencedor)", cls: "pts-mid", kind: "acerto" };
-      const penOk = wentToPenalties(m) && bh === ba && bet.pen === m.pen.winner;
+      const penOk = wentToPenalties(m) && predictedAdvancer(bet) === m.pen.winner;
       return { ...base, total, penOk };
     }
 

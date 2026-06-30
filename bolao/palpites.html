@@ -81,7 +81,7 @@
 
   <script type="module">
     import {
-      isConfigured, onAuth, logOut, onMatches, onBets, onConfig, saveBet, scoreBet, savePlayerProfile, hasResult, pokeRefresh, isKnockout, wentToPenalties
+      isConfigured, onAuth, logOut, onMatches, onBets, onConfig, saveBet, scoreBet, savePlayerProfile, hasResult, pokeRefresh, isKnockout, wentToPenalties, predictedAdvancer
     } from "./js/db.js";
     import { flagOf } from "./js/teams.js";
 
@@ -219,12 +219,14 @@
         </div>` : "";
 
       // Quem avançou nos pênaltis (jogo encerrado) + se o jogador acertou.
+      // O "palpite de quem avança" vem do pick (empate) ou da vitória apostada.
+      const predAdv = wonPens ? predictedAdvancer(bet) : null;
       const penResultHtml = wonPens ? `
         <div class="pen-result mt-2">🥅 ${penWinnerName} venceu nos pênaltis (${m.pen.home} x ${m.pen.away})${
-          betIsDraw
-            ? (bet.pen === m.pen.winner
-                ? ` · <span class="ko-ok">você cravou quem avança (+${scoring.penBonus||0})</span>`
-                : (bet.pen ? ` · <span class="lock-tag">você apostou ${bet.pen==="home"?m.home:m.away}</span>` : ""))
+          predAdv
+            ? (predAdv === m.pen.winner
+                ? ` · <span class="ko-ok">você acertou quem avança (+${scoring.penBonus||0})</span>`
+                : ` · <span class="lock-tag">você apostou em ${predAdv === "home" ? m.home : m.away}</span>`)
             : ""
         }</div>` : "";
       // Linha de status: prazo para palpitar / encerrado / aguardando placar / resultado confirmado
