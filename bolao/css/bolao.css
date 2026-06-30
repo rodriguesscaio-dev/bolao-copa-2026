@@ -253,6 +253,14 @@ a { color: var(--accent); text-underline-offset: 3px; }
 .vt-btn.active { background: var(--accent); color: var(--ac-black); }
 .vt-btn.active:hover { color: var(--ac-black); }
 
+/* Checkbox "Ocultar fase de grupos" */
+.group-hide-toggle {
+  color: var(--fg-muted); display: inline-flex; align-items: center; gap: .4rem;
+  font-weight: 600; cursor: pointer; user-select: none;
+}
+.group-hide-toggle input { accent-color: var(--accent); width: 16px; height: 16px; cursor: pointer; }
+.group-hide-toggle:hover { color: var(--accent); }
+
 /* Cabeçalho de dia no modo "por data" */
 .date-header {
   color: var(--accent); font-weight: 800; letter-spacing: -0.02em;

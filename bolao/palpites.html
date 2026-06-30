@@ -59,6 +59,9 @@
         <button type="button" class="vt-btn" data-view="grupo">Por grupo</button>
         <button type="button" class="vt-btn" data-view="data">Por data</button>
       </div>
+      <label class="group-hide-toggle small ms-2" title="A fase de grupos já terminou">
+        <input type="checkbox" id="hideGroups"> Ocultar fase de grupos
+      </label>
     </div>
 
     <div id="list"><p class="muted">Carregando jogos…</p></div>
@@ -88,6 +91,9 @@
     let playerId = null, playerName = "", playerEmail = "";
     let matches = {}, myBets = {}, scoring = null;
     let viewMode = localStorage.getItem("bolao_view") || "grupo";
+    // Ocultar fase de grupos (já encerrada). Padrão: ocultar.
+    let hideGroups = localStorage.getItem("bolao_hide_groups");
+    hideGroups = hideGroups === null ? true : hideGroups === "1";
 
     document.getElementById("change").onclick = async (e) => {
       e.preventDefault();
@@ -148,6 +154,15 @@
     });
     syncToggle();
 
+    // ---- toggle "Ocultar fase de grupos" ----
+    const hideGroupsEl = document.getElementById("hideGroups");
+    hideGroupsEl.checked = hideGroups;
+    hideGroupsEl.onchange = () => {
+      hideGroups = hideGroupsEl.checked;
+      localStorage.setItem("bolao_hide_groups", hideGroups ? "1" : "0");
+      render();
+    };
+
     onAuth((user) => {
       if (!user) { window.location.href = "index.html"; return; }
       playerId = user.uid;
@@ -178,7 +193,6 @@
       const locked = m.finished || (start && now >= start);
       const done = hasResult(m);
       const pts = (done && bet) ? scoreBet(bet, m, scoring) : null;
-      if (pts != null) total += pts;
 
       const koGame = isKnockout(m);
       const wonPens = done && wentToPenalties(m);
@@ -263,19 +277,21 @@
       const brazilGroup = brBrasil ? brBrasil.group : null;
       let html = "", hiddenKO = 0;
 
-      const groupMatches = arr.filter(m => m.stage === "Fase de Grupos" && isDefined(m));
-      const letters = [...new Set(groupMatches.map(m => m.group).filter(Boolean))].sort();
-      for (const letter of letters) {
-        const games = groupMatches.filter(m => m.group === letter).sort(byTime);
-        const isBr = letter === brazilGroup;
-        html += `
-        <section class="group-block ${isBr ? "group-brasil" : ""} mt-4">
-          <h5 class="group-title fw-bold mb-2">
-            ${isBr ? "⭐ " : ""}Grupo ${letter}
-            ${isBr ? `<span class="badge text-dark ms-2" style="background:#ffd200">Grupo do Brasil 🇧🇷</span>` : ""}
-          </h5>
-          ${games.map(matchCard).join("")}
-        </section>`;
+      if (!hideGroups) {
+        const groupMatches = arr.filter(m => m.stage === "Fase de Grupos" && isDefined(m));
+        const letters = [...new Set(groupMatches.map(m => m.group).filter(Boolean))].sort();
+        for (const letter of letters) {
+          const games = groupMatches.filter(m => m.group === letter).sort(byTime);
+          const isBr = letter === brazilGroup;
+          html += `
+          <section class="group-block ${isBr ? "group-brasil" : ""} mt-4">
+            <h5 class="group-title fw-bold mb-2">
+              ${isBr ? "⭐ " : ""}Grupo ${letter}
+              ${isBr ? `<span class="badge text-dark ms-2" style="background:#ffd200">Grupo do Brasil 🇧🇷</span>` : ""}
+            </h5>
+            ${games.map(matchCard).join("")}
+          </section>`;
+        }
       }
 
       const koStages = STAGE_ORDER.filter(s => s !== "Fase de Grupos");
@@ -301,7 +317,8 @@
 
     // ---- Modo "por data": todos os jogos definidos, em ordem, agrupados por dia ----
     function renderByDate(arr) {
-      const games = arr.filter(isDefined).sort(byTime);
+      let games = arr.filter(isDefined).sort(byTime);
+      if (hideGroups) games = games.filter(m => m.stage !== "Fase de Grupos");
       let html = "", curDay = "";
       for (const m of games) {
         const d = m.datetime ? new Date(m.datetime) : null;
@@ -320,7 +337,11 @@
       if (!scoring) return;
       const list = document.getElementById("list");
       const arr = Object.values(matches);
-      total = 0;
+      // pontos totais somam TODOS os jogos com resultado (independe do filtro de exibição)
+      total = arr.reduce((s, m) => {
+        const bet = myBets[m.id];
+        return s + ((bet && hasResult(m)) ? scoreBet(bet, m, scoring) : 0);
+      }, 0);
 
       if (!arr.length) {
         list.innerHTML = `<div class="card-glass p-4 text-center muted">
@@ -330,7 +351,10 @@
         return;
       }
 
-      list.innerHTML = viewMode === "data" ? renderByDate(arr) : renderByGroup(arr);
+      const hideNote = hideGroups
+        ? `<p class="muted small mb-0 mt-1">📂 Fase de grupos ocultada (já encerrada). Desmarque acima para vê-la.</p>`
+        : "";
+      list.innerHTML = hideNote + (viewMode === "data" ? renderByDate(arr) : renderByGroup(arr));
       document.getElementById("mypts").textContent = total;
       wireInputs();
       wirePenButtons();
