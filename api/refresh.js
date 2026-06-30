@@ -137,13 +137,29 @@ module.exports = async (req, res) => {
       if (m.utcDate && cur.datetime !== m.utcDate) updates[`${id}/datetime`] = m.utcDate;
 
       if (fin) {
-        const hs = Number(ft.home), as = Number(ft.away);
+        // Mata-mata: a football-data SOMA os pênaltis no fullTime. No bolão, o
+        // que vale é o resultado no fim da prorrogação (= empate, quando o jogo
+        // foi decidido nos pênaltis). Então subtraímos o placar dos pênaltis.
+        const pen = m.score && m.score.penalties ? m.score.penalties : null;
+        const wentToPens = m.score && m.score.duration === "PENALTY_SHOOTOUT"
+          && pen && pen.home != null && pen.away != null;
+        const hs = Number(ft.home) - (wentToPens ? Number(pen.home) : 0);
+        const as = Number(ft.away) - (wentToPens ? Number(pen.away) : 0);
         if (cur.finished !== true || cur.homeScore !== hs || cur.awayScore !== as) {
           updates[`${id}/finished`] = true;
           updates[`${id}/homeScore`] = hs;
           updates[`${id}/awayScore`] = as;
           updates[`${id}/fonte`] = "football-data.org";
           changed++;
+        }
+        // Guarda o placar dos pênaltis só p/ exibir quem avançou (NÃO pontua).
+        if (wentToPens) {
+          const pH = Number(pen.home), pA = Number(pen.away);
+          const winner = pH > pA ? "home" : "away";
+          if (!cur.pen || cur.pen.home !== pH || cur.pen.away !== pA) {
+            updates[`${id}/pen`] = { home: pH, away: pA, winner };
+            changed++;
+          }
         }
       }
     }
